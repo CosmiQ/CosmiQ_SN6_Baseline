@@ -6,6 +6,7 @@ import argparse
 import solaris as sol
 
 def pretrain(args):
+    assert(args.sardir is not None and args.labeldir is not None and args.maskdir is not None)
     print('pretrain')
 
 def train(args):
