@@ -3,7 +3,9 @@
 import os
 import sys
 import glob
+import pathlib
 import argparse
+import geopandas as gpd
 import tqdm
 
 import solaris as sol
@@ -19,25 +21,35 @@ def pretrain(args):
 
     #Get paths to relevant files
     sarpaths = glob.glob(os.path.join(args.sardir, '*.tif'))
-    tilepaths.sort()
+    sarpaths.sort()
     labelpaths = glob.glob(os.path.join(args.labeldir, '*.geojson'))
     labelpaths.sort()
-    maskpaths = [os.path.join(args.maskdir, os.path.basename(tilepath)) for tilepath in tilepaths]
+    maskpaths = [os.path.join(args.maskdir, os.path.basename(sarpath)) for sarpath in sarpaths]
 
-    #Create empty folder to hold masks
+    #Create empty folders to hold masks
     pathlib.Path(args.maskdir).mkdir(exist_ok=True)
     oldmasks = glob.glob(os.path.join(args.maskdir, '*.tif'))
     for oldmask in oldmasks:
         os.remove(oldmask)
 
-    #Create and save masks
+    #Create masks, with optional size threshold
     for i, (sarpath, labelpath, maskpath) in tqdm.tqdm(enumerate(zip(sarpaths, labelpaths, maskpaths)), total=len(sarpaths)):
         gdf = gpd.read_file(labelpath)
+        if args.mintrainsize is not None:
+            cut = gdf.area > float(args.mintrainsize)
+            gdf = gdf.loc[cut]
         maskdata = sol.vector.mask.footprint_mask(
             df=gdf,
             reference_im=sarpath,
             out_file=maskpath
         )
+        if i>10:
+            break
+
+    #Rotate masks and images, if enabled
+    if args.orient:
+        assert(args.orientfile is not None)
+        
 
 def train(args):
     print('Train')
@@ -62,11 +74,24 @@ if __name__ == '__main__':
                         help='Whether to test model')
     #File paths
     parser.add_argument('--sardir',
-                        help='SAR_Intensity folder')
+                        help='Folder of SAR imagery files')
+    parser.add_argument('--opticaldir',
+                        help='Folder of optical imagery files')
     parser.add_argument('--labeldir',
-                        help='Vector building footprint folder')
+                        help='Folder of building footprint vector files')
     parser.add_argument('--maskdir',
                         help='Where to save building footprint masks')
+    parser.add_argument('--sarprocdir',
+                        help='Where to save preprocessed SAR imagery files')
+    parser.add_argument('--opticalprocdir',
+                        help='Where to save preprocessed optical image files')
+    parser.add_argument('--orientfile',
+                        help='File of data acquisition directions')
+    #Algorithm settings
+    parser.add_argument('--orient', action='store_true',
+                        help='Rotate tiles to align imaging direction')
+    parser.add_argument('--mintrainsize',
+                        help='Minimum building size (m^2) for training')
     args = parser.parse_args(sys.argv[1:])
 
     if args.pretrain:
