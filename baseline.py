@@ -3,6 +3,7 @@
 import os
 import sys
 import glob
+import shutil
 import pathlib
 import argparse
 import pandas as pd
@@ -11,26 +12,37 @@ import tqdm
 
 import solaris as sol
 
+
 def makeemptyfolder(path):
     """
-    Create a folder if it doesn't exist already, and remove its contents
+    Create an empty folder, deleting anything there already
     """
+    shutil.rmtree(path, ignore_errors=True)
     pathlib.Path(path).mkdir(exist_ok=True)
-    entries = glob.glob(os.path.join(path, '*'))
-    entries.append(glob.glob(os.path.join(path, '.*')))
-    for entry in entries:
-        if os.path.isfile(entry):
-            os.remove(entry)
-        else:
-            os.rmtree(entry)
+
 
 def readrotationfile(path):
+    """
+    Reads SAR_orientations file, which lists whether each strip was imaged
+    from the north (denoted by 0) or from the south (denoted by 1).
+
+    Example of using the resulting dataframe:
+    rotationdf.loc['20190823161251_20190823161546'].squeeze()
+    """
     rotationdf = pd.read_csv(args.rotationfile,
-                             usecols=['strip', 'direction'],
+                             sep=' ',
+                             index_col=0,
+                             names=['strip', 'direction'],
                              header=None)
-    rotationdf.set_index(['strip'])
-    print(rotationdf)
+    rotationdf['direction'] = rotationdf['direction'].astype(int)
     return rotationdf
+
+def lookuprotation(tilepath, rotationdf):
+    """
+    Looks up the SAR_orientations value for a tile based on its filename
+    """
+    pass
+
 
 def pretrain(args):
     """
