@@ -7,6 +7,7 @@ import uuid
 import shutil
 import pathlib
 import argparse
+import numpy as np
 import pandas as pd
 import geopandas as gpd
 import gdal
@@ -47,11 +48,10 @@ def lookuprotation(tilepath, rotationdf):
     return rotation
 
 
-def copyimage(srcpath, dstpath, rotate=False, deletesource=False):
+def copyrotateimage(srcpath, dstpath, rotate=False, deletesource=False):
     """
     Copying with rotation:  Copies a TIFF image from srcpath to dstpath,
-    rotating the image by 180 degrees if specified.  If srcpath and dstpath
-    are the same, rotation is done in place.
+    rotating the image by 180 degrees if specified.
     """
     #Handles special case where source path and destination path are the same
     if srcpath==dstpath:
@@ -67,20 +67,38 @@ def copyimage(srcpath, dstpath, rotate=False, deletesource=False):
     if not rotate:
         shutil.copy(srcpath, dstpath, follow_symlinks=True)
     else:
-        #Rotate image with gdal
         driver = gdal.GetDriverByName('GTiff')
 
         #Read in tile
         tilefile = gdal.Open(srcpath)
         geotransform = tilefile.GetGeoTransform()
         projection = tilefile.GetProjection()
+        numbands = tilefile.RasterCount
+        tilevals
+        for bandnum in range(1,numbands):
+            
         tileband = tilefile.GetRasterBand(1)
         tilevals = tileband.ReadAsArray()
+        print(type(tilefile))
         del tileband
         del tilefile
 
+        #Rotate tile 180 degrees
+        tilevals = np.fliplr(np.flipud(tilevals))
+
+        #Write out tile
+        ysize, xsize = np.shape(tilevals)
+        tilefile = driver.Create(dstpath, xsize, ysize, 1, gdal.GDT_UInt16)
+        tilefile.SetGeoTransform(geotransform)
+        tilefile.SetProjection(projection)
+        tilefile.GetRasterBand(1).WriteArray(tilevals)
+        tilefile.FlushCache()
+        tilefile = None
+
     if deletesource:
-        os.remove(srcpath)
+        print('delete')
+        print(srcpath)
+        pass#os.remove(srcpath)
 
 
 def pretrain(args):
@@ -128,9 +146,7 @@ def pretrain(args):
         else:
             rotationflag = 0
         if rotationflag==1:
-            #Rotate
-            pass
-
+            copyrotateimage(maskpath, maskpath, rotate=True)
         if i>5:
             break
 
