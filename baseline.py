@@ -5,11 +5,32 @@ import sys
 import glob
 import pathlib
 import argparse
+import pandas as pd
 import geopandas as gpd
 import tqdm
 
 import solaris as sol
 
+def makeemptyfolder(path):
+    """
+    Create a folder if it doesn't exist already, and remove its contents
+    """
+    pathlib.Path(path).mkdir(exist_ok=True)
+    entries = glob.glob(os.path.join(path, '*'))
+    entries.append(glob.glob(os.path.join(path, '.*')))
+    for entry in entries:
+        if os.path.isfile(entry):
+            os.remove(entry)
+        else:
+            os.rmtree(entry)
+
+def readrotationfile(path):
+    rotationdf = pd.read_csv(args.rotationfile,
+                             usecols=['strip', 'direction'],
+                             header=None)
+    rotationdf.set_index(['strip'])
+    print(rotationdf)
+    return rotationdf
 
 def pretrain(args):
     """
@@ -26,13 +47,21 @@ def pretrain(args):
     labelpaths.sort()
     maskpaths = [os.path.join(args.maskdir, os.path.basename(sarpath)) for sarpath in sarpaths]
 
-    #Create empty folders to hold masks
-    pathlib.Path(args.maskdir).mkdir(exist_ok=True)
-    oldmasks = glob.glob(os.path.join(args.maskdir, '*.tif'))
-    for oldmask in oldmasks:
-        os.remove(oldmask)
+    #Create empty folders to hold masks, processed SAR, & processed optical
+    folders = [args.maskdir, args.sarprocdir]
+    if args.opticalprocdir is not None:
+        folders.append(args.opticalprocdir)
+    for folder in folders:
+        makeemptyfolder(folder)
 
-    #Create masks, with optional size threshold
+    #Rotate masks and images, if enabled
+    if args.rotate:
+        assert(args.rotationfile is not None)
+        rotationdf = readrotationfile(args.rotationfile)
+
+    #Copy SAR imagery to local folder, with optional rotation
+
+    #Create masks, with optional rotation and optional size threshold
     for i, (sarpath, labelpath, maskpath) in tqdm.tqdm(enumerate(zip(sarpaths, labelpaths, maskpaths)), total=len(sarpaths)):
         gdf = gpd.read_file(labelpath)
         if args.mintrainsize is not None:
@@ -43,12 +72,10 @@ def pretrain(args):
             reference_im=sarpath,
             out_file=maskpath
         )
-        if i>10:
+        if i>5:
             break
 
-    #Rotate masks and images, if enabled
-    if args.orient:
-        assert(args.orientfile is not None)
+
         
 
 def train(args):
@@ -85,10 +112,10 @@ if __name__ == '__main__':
                         help='Where to save preprocessed SAR imagery files')
     parser.add_argument('--opticalprocdir',
                         help='Where to save preprocessed optical image files')
-    parser.add_argument('--orientfile',
+    parser.add_argument('--rotationfile',
                         help='File of data acquisition directions')
     #Algorithm settings
-    parser.add_argument('--orient', action='store_true',
+    parser.add_argument('--rotate', action='store_true',
                         help='Rotate tiles to align imaging direction')
     parser.add_argument('--mintrainsize',
                         help='Minimum building size (m^2) for training')
