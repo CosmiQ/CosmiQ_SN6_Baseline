@@ -3,6 +3,7 @@
 import os
 import sys
 import glob
+import math
 import uuid
 import shutil
 import pathlib
@@ -80,13 +81,14 @@ def copyrotateimage(srcpath, dstpath, rotate=False, deletesource=False):
         tilefile = None
 
     if deletesource:
-        pass#os.remove(srcpath)
+        #print('Deleting %s' % (srcpath))
+        os.remove(srcpath)
 
 
 def pretrain(args):
     """
-    Creates formatted versions of data used for training,
-    including raster label masks.
+    Creates rotated versions of imagery used for training
+    as well as raster label masks.
     """
     print('Pretrain')
     assert(args.sardir is not None and args.labeldir is not None and args.maskdir is not None)
@@ -120,7 +122,13 @@ def pretrain(args):
 
     #Create masks, with optional rotation and optional size threshold
     #Also copy SAR and optical imagery to local folder, with optional rotation
+    #Also create Pandas dataframe of training data
+    trainingdf = pd.DataFrame(columns=['opticalimage',
+                                       'sarimage',
+                                       'label',
+                                       'group'])
     for i, (sarpath, opticalpath, labelpath, maskpath, sarprocpath, opticalprocpath) in tqdm.tqdm(enumerate(zip(sarpaths, opticalpaths, labelpaths, maskpaths, sarprocpaths, opticalprocpaths)), total=len(sarpaths)):
+        """
         #Generate mask
         gdf = gpd.read_file(labelpath)
         if args.mintrainsize is not None:
@@ -143,13 +151,35 @@ def pretrain(args):
         copyrotateimage(sarpath, sarprocpath, rotate=rotationflagbool)
         if args.opticaldir is not None:
             copyrotateimage(opticalpath, opticalprocpath, rotate=rotationflagbool)
+        """
+        #Assign the tile to one of a small number of groups, for setting
+        #aside validation data (or for k-fold cross-validation, not used here).
+        #Caveats: These groups slightly overlap each other.  Also, they are
+        #not of equal size.
+        sarfile = gdal.Open(sarpath)
+        sartransform = sarfile.GetGeoTransform()
+        sarx = sartransform[0]
+        ledge = 592000-450
+        redge = 596700-450
+        numgroups = 5
+        groupnum = min(numgroups-1, max(0, math.floor((sarx-ledge) / (redge-ledge) * numgroups)))
+        trainingdf = trainingdf.append({
+            'sarimage': sarpath,
+            'opticalimage': opticalpath,
+            'label': maskpath,
+            'group': groupnum}, ignore_index=True)
 
-        if i>5:
-            break
+    #Write reference CSVs for training
+    for i in range(7):
+        print(i)
+        print(len(trainingdf[trainingdf['group']==i]))
+
 
 
 def train(args):
     print('Train')
+
+    
 
 def pretest(args):
     print('Pretest')
