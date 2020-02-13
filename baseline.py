@@ -59,7 +59,7 @@ def copyrotateimage(srcpath, dstpath, rotate=False, deletesource=False):
             #Then there's nothing to do
             return
         else:
-            #Move file to temporary location
+            #Move file to temporary location before continuing
             srcpath = srcpath + str(uuid.uuid4())
             shutil.move(dstpath, srcpath)
             deletesource = True
@@ -97,6 +97,14 @@ def pretrain(args):
     labelpaths = glob.glob(os.path.join(args.labeldir, '*.geojson'))
     labelpaths.sort()
     maskpaths = [os.path.join(args.maskdir, os.path.basename(sarpath)) for sarpath in sarpaths]
+    sarprocpaths = [os.path.join(args.sarprocdir, os.path.basename(sarpath)) for sarpath in sarpaths]
+    if args.opticaldir is not None:
+        opticalpaths = glob.glob(os.path.join(args.opticaldir, '*.tif'))
+        opticalpaths.sort()
+        opticalprocpaths = [os.path.join(args.opticalprocdir, os.path.basename(opticalpath)) for opticalpath in opticalpaths]
+    else:
+        opticalpaths = [''] * len(sarpaths)
+        opticalprocpaths = [''] * len(sarpaths)
 
     #Create empty folders to hold masks, processed SAR, & processed optical
     folders = [args.maskdir, args.sarprocdir]
@@ -110,10 +118,10 @@ def pretrain(args):
         assert(args.rotationfile is not None)
         rotationdf = readrotationfile(args.rotationfile)
 
-    #Copy SAR imagery to local folder, with optional rotation
-
     #Create masks, with optional rotation and optional size threshold
-    for i, (sarpath, labelpath, maskpath) in tqdm.tqdm(enumerate(zip(sarpaths, labelpaths, maskpaths)), total=len(sarpaths)):
+    #Also copy SAR and optical imagery to local folder, with optional rotation
+    for i, (sarpath, opticalpath, labelpath, maskpath, sarprocpath, opticalprocpath) in tqdm.tqdm(enumerate(zip(sarpaths, opticalpaths, labelpaths, maskpaths, sarprocpaths, opticalprocpaths)), total=len(sarpaths)):
+        #Generate mask
         gdf = gpd.read_file(labelpath)
         if args.mintrainsize is not None:
             cut = gdf.area > float(args.mintrainsize)
@@ -123,17 +131,22 @@ def pretrain(args):
             reference_im=sarpath,
             out_file=maskpath
         )
+        #Optionally rotate mask
         if args.rotate:
             rotationflag = lookuprotation(sarpath, rotationdf)
         else:
             rotationflag = 0
         if rotationflag==1:
             copyrotateimage(maskpath, maskpath, rotate=True)
+        #Copy SAR and optical imagery, with optional rotation
+        rotationflagbool = rotationflag == 1
+        copyrotateimage(sarpath, sarprocpath, rotate=rotationflagbool)
+        if args.opticaldir is not None:
+            copyrotateimage(opticalpath, opticalprocpath, rotate=rotationflagbool)
+
         if i>5:
             break
 
-
-        
 
 def train(args):
     print('Train')
