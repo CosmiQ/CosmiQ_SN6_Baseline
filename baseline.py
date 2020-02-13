@@ -68,36 +68,18 @@ def copyrotateimage(srcpath, dstpath, rotate=False, deletesource=False):
         shutil.copy(srcpath, dstpath, follow_symlinks=True)
     else:
         driver = gdal.GetDriverByName('GTiff')
-
-        #Read in tile
         tilefile = gdal.Open(srcpath)
-        geotransform = tilefile.GetGeoTransform()
-        projection = tilefile.GetProjection()
-        numbands = tilefile.RasterCount
-        tilevals
-        for bandnum in range(1,numbands):
-            
-        tileband = tilefile.GetRasterBand(1)
-        tilevals = tileband.ReadAsArray()
-        print(type(tilefile))
-        del tileband
-        del tilefile
-
-        #Rotate tile 180 degrees
-        tilevals = np.fliplr(np.flipud(tilevals))
-
-        #Write out tile
-        ysize, xsize = np.shape(tilevals)
-        tilefile = driver.Create(dstpath, xsize, ysize, 1, gdal.GDT_UInt16)
-        tilefile.SetGeoTransform(geotransform)
-        tilefile.SetProjection(projection)
-        tilefile.GetRasterBand(1).WriteArray(tilevals)
-        tilefile.FlushCache()
+        copyfile = driver.CreateCopy(dstpath, tilefile, strict=0)
+        numbands = copyfile.RasterCount
+        for bandnum in range(1, numbands+1):
+            banddata = tilefile.GetRasterBand(bandnum).ReadAsArray()
+            banddata = np.fliplr(np.flipud(banddata)) #180 deg rotation
+            copyfile.GetRasterBand(bandnum).WriteArray(banddata)
+        copyfile.FlushCache()
+        copyfile = None
         tilefile = None
 
     if deletesource:
-        print('delete')
-        print(srcpath)
         pass#os.remove(srcpath)
 
 
