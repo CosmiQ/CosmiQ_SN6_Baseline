@@ -123,10 +123,13 @@ def pretrain(args):
     #Create masks, with optional rotation and optional size threshold
     #Also copy SAR and optical imagery to local folder, with optional rotation
     #Also create Pandas dataframe of training data
-    trainingdf = pd.DataFrame(columns=['opticalimage',
-                                       'sarimage',
-                                       'label',
-                                       'group'])
+    combodf = pd.DataFrame(columns=['opticalimage',
+                                    'sarimage',
+                                    'label',
+                                    'group'])
+    ledge = 592000-450
+    redge = 596700-450
+    numgroups = 5
     for i, (sarpath, opticalpath, labelpath, maskpath, sarprocpath, opticalprocpath) in tqdm.tqdm(enumerate(zip(sarpaths, opticalpaths, labelpaths, maskpaths, sarprocpaths, opticalprocpaths)), total=len(sarpaths)):
         """
         #Generate mask
@@ -159,21 +162,23 @@ def pretrain(args):
         sarfile = gdal.Open(sarpath)
         sartransform = sarfile.GetGeoTransform()
         sarx = sartransform[0]
-        ledge = 592000-450
-        redge = 596700-450
-        numgroups = 5
         groupnum = min(numgroups-1, max(0, math.floor((sarx-ledge) / (redge-ledge) * numgroups)))
-        trainingdf = trainingdf.append({
+        combodf = combodf.append({
             'sarimage': sarpath,
             'opticalimage': opticalpath,
             'label': maskpath,
             'group': groupnum}, ignore_index=True)
 
     #Write reference CSVs for training
-    for i in range(7):
-        print(i)
-        print(len(trainingdf[trainingdf['group']==i]))
-
+    for i in range(numgroups+1):
+        print( '%i: %i' % (i, len(combodf[combodf['group']==i])))
+    validationgroup = numgroups - 1
+    traindf = combodf[combodf['group'] != validationgroup]
+    validdf = combodf[combodf['group'] == validationgroup]
+    traindf = traindf.loc[:, ['sarimage', 'label']].rename(columns={'sarimage':'image'})
+    validdf = validdf.loc[:, ['sarimage', 'label']].rename(columns={'sarimage':'image'})
+    traindf.to_csv(args.traincsv, index=False)
+    validdf.to_csv(args.validcsv, index=False)
 
 
 def train(args):
@@ -206,14 +211,18 @@ if __name__ == '__main__':
                         help='Folder of optical imagery files')
     parser.add_argument('--labeldir',
                         help='Folder of building footprint vector files')
+    parser.add_argument('--rotationfile',
+                        help='File of data acquisition directions')
     parser.add_argument('--maskdir',
                         help='Where to save building footprint masks')
     parser.add_argument('--sarprocdir',
                         help='Where to save preprocessed SAR imagery files')
     parser.add_argument('--opticalprocdir',
                         help='Where to save preprocessed optical image files')
-    parser.add_argument('--rotationfile',
-                        help='File of data acquisition directions')
+    parser.add_argument('--traincsv',
+                        help='Where to save reference CSV of training data')
+    parser.add_argument('--validcsv',
+                        help='Where to save reference CSV of validation data')
     #Algorithm settings
     parser.add_argument('--rotate', action='store_true',
                         help='Rotate tiles to align imaging direction')
