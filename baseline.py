@@ -181,6 +181,158 @@ def pretrain(args):
     validdf.to_csv(args.validcsv, index=False)
 
 
+#Small wrapper class to apply sigmoid and mask to output of a Module class.
+class Sigmoid_and_Mask(nn.Module):
+    def __init__(self, WrappedClass=SeResNext50_9ch_Unet):
+        super(Sigmoid_and_Mask, self).__init__()
+        self.innermodel = WrappedClass()
+    def forward(self, x):
+        logits = self.innermodel.forward(x)
+        sigout = torch.sigmoid(logits)
+        maskout = torch.where(x.view(sigout.size()) > -4, sigout, torch.zeros(sigout.size()).cuda()) #The magic number in this line is -mean/std for image normalization
+        return maskout
+
+
+#Custom model dictionary
+seresnext50_dict = {
+    'model_name': 'SeResNext50_9ch_Unet',#'Sigmoid_and_Mask',
+    'weight_path': None,
+    'weight_url': None,
+    'arch': SeResNext50_9ch_Unet#Sigmoid_and_Mask
+}
+
+
+def defineyaml:
+    #YAML
+    yamlcontents = """
+model_name: SeResNext50_9ch_Unet #xdxd_spacenet4 or SeResNext50_9ch_Unet or Sigmoid_and_Mask
+
+model_path:
+train: true
+infer: true
+
+pretrained: false
+nn_framework:  torch
+batch_size: 8
+
+data_specs:
+  width: 512
+  height: 512
+  dtype:
+  image_type: 16bit
+  rescale: false
+  rescale_minima: auto
+  rescale_maxima: auto
+  channels: 1
+  label_type: mask
+  is_categorical: false
+  mask_channels: 1
+  val_holdout_frac:
+  data_workers:
+
+training_data_csv: '$DATADIR/traintable.csv'
+validation_data_csv: '$DATADIR/validtable.csv'
+inference_data_csv: '$DATADIR/testtable.csv'
+
+training_augmentation:
+  augmentations:
+    HorizontalFlip:
+      p: 0.5
+    #RandomRotate90:
+    #  p: 0.5
+    #Rotate:
+    #  limit: 5
+    #  border_mode: constant
+    #  cval: 0
+    #  p: 0.5
+    RandomCrop:
+      height: 512
+      width: 512
+      p: 1.0
+    Normalize:
+      mean:
+        - 0.5
+      std:
+        - 0.125
+      max_pixel_value: 65535.0 #255.0 or 65535.0
+      p: 1.0
+  p: 1.0
+  shuffle: true
+validation_augmentation:
+  augmentations:
+    CenterCrop:
+      height: 512
+      width: 512
+      p: 1.0
+    Normalize:
+      mean:
+        - 0.5
+      std:
+        - 0.125
+      max_pixel_value: 65535.0 #255.0 or 65535.0
+      p: 1.0
+  p: 1.0
+inference_augmentation:
+  augmentations:
+    Normalize:
+      mean:
+        - 0.5
+      std:
+        - 0.125
+      max_pixel_value: 65535.0 #255.0 or 65535.0
+      p: 1.0
+  p: 1.0
+training:
+  epochs:  100000
+  steps_per_epoch:
+  optimizer: AdamW #Adam or AdamW
+  lr: .5e-4
+  opt_args:
+  loss:
+    #bcewithlogits:
+    #jaccard:
+    #dice:
+    #    logits: true
+    #focal:
+    #    logits: true
+    ScaledTorchDiceLoss:
+        scale: false
+        logits: true
+    #ScaledTorchFocalLoss:
+    #    scale: false
+    #    logits: true
+    #bcewithlogits:
+  loss_weights:
+    #bcewithlogits: 10
+    #jaccard: 2.5
+    #dice: 1.0
+    #focal: 10.0
+    ScaledTorchDiceLoss: 1.0
+    #ScaledTorchFocalLoss: 10.0
+    #bcewithlogits: 1.0
+  metrics:
+    training:
+    validation:
+  checkpoint_frequency: 10
+  callbacks:
+    model_checkpoint:
+      filepath: '$DATADIR/models/best.model'
+      monitor: val_loss
+  model_dest_path: '$DATADIR/models/last.model'
+  verbose: true
+
+inference:
+  window_step_size_x: 512
+  window_step_size_y: 512
+  output_dir: '$DATADIR/inference_out/'
+"""
+    yamlcontents = yamlcontents.replace('$DATADIR', datadir)
+    yamlpath = os.path.join(datadir, 'sar.yaml')
+    yamlfile = open(yamlpath, 'w')
+    yamlfile.write(yamlcontents)
+    yamlfile.close()
+
+
 def train(args):
     print('Train')
 
