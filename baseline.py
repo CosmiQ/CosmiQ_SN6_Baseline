@@ -219,20 +219,20 @@ data_specs:
   width: 512
   height: 512
   dtype:
-  image_type: 16bit
+  image_type: 32bit
   rescale: false
   rescale_minima: auto
   rescale_maxima: auto
-  channels: 1
+  channels: 4
   label_type: mask
   is_categorical: false
   mask_channels: 1
   val_holdout_frac:
   data_workers:
 
-training_data_csv: '$DATADIR/traintable.csv'
-validation_data_csv: '$DATADIR/validtable.csv'
-inference_data_csv: '$DATADIR/testtable.csv'
+training_data_csv: '$TRAINCSV'
+validation_data_csv: '$VALIDCSV'
+inference_data_csv: '$TESTCSV'
 
 training_augmentation:
   augmentations:
@@ -254,7 +254,7 @@ training_augmentation:
         - 0.5
       std:
         - 0.125
-      max_pixel_value: 65535.0 #255.0 or 65535.0
+      max_pixel_value: 255.0 #255.0 or 65535.0
       p: 1.0
   p: 1.0
   shuffle: true
@@ -269,7 +269,7 @@ validation_augmentation:
         - 0.5
       std:
         - 0.125
-      max_pixel_value: 65535.0 #255.0 or 65535.0
+      max_pixel_value: 255.0 #255.0 or 65535.0
       p: 1.0
   p: 1.0
 inference_augmentation:
@@ -279,7 +279,7 @@ inference_augmentation:
         - 0.5
       std:
         - 0.125
-      max_pixel_value: 65535.0 #255.0 or 65535.0
+      max_pixel_value: 255.0 #255.0 or 65535.0
       p: 1.0
   p: 1.0
 training:
@@ -291,13 +291,13 @@ training:
   loss:
     #bcewithlogits:
     #jaccard:
-    #dice:
-    #    logits: true
-    #focal:
-    #    logits: true
-    ScaledTorchDiceLoss:
-        scale: false
+    dice:
         logits: true
+    focal:
+        logits: true
+    #ScaledTorchDiceLoss:
+    #    scale: false
+    #    logits: true
     #ScaledTorchFocalLoss:
     #    scale: false
     #    logits: true
@@ -305,9 +305,9 @@ training:
   loss_weights:
     #bcewithlogits: 10
     #jaccard: 2.5
-    #dice: 1.0
-    #focal: 10.0
-    ScaledTorchDiceLoss: 1.0
+    dice: 1.0
+    focal: 10.0
+    #ScaledTorchDiceLoss: 1.0
     #ScaledTorchFocalLoss: 10.0
     #bcewithlogits: 1.0
   metrics:
@@ -316,26 +316,38 @@ training:
   checkpoint_frequency: 10
   callbacks:
     model_checkpoint:
-      filepath: '$DATADIR/models/best.model'
+      filepath: '$MODELDIR/best.model'
       monitor: val_loss
-  model_dest_path: '$DATADIR/models/last.model'
+  model_dest_path: '$MODELDIR/last.model'
   verbose: true
 
 inference:
   window_step_size_x: 512
   window_step_size_y: 512
-  output_dir: '$DATADIR/inference_out/'
+  output_dir: '$TESTOUTDIR'
 """
-    yamlcontents = yamlcontents.replace('$DATADIR', datadir)
-    yamlpath = os.path.join(datadir, 'sar.yaml')
-    yamlfile = open(yamlpath, 'w')
+    if args.traincsv is not None:
+        yamlcontents = yamlcontents.replace('$TRAINCSV', args.traincsv)
+    if args.validcsv is not None:
+        yamlcontents = yamlcontents.replace('$VALIDCSV', args.validcsv)
+    if args.testcsv is not None:
+        yamlcontents = yamlcontents.replace('$TESTCSV', args.testcsv)
+    if args.modeldir is not None:
+        yamlcontents = yamlcontents.replace('$MODELDIR', args.modeldir)
+    if args.testoutdir is not None:
+        yamlcontents = yamlcontents.replace('$TESTOUTDIR', args.testoutdir)
+    yamlfile = open(args.yamlpath, 'w')
     yamlfile.write(yamlcontents)
     yamlfile.close()
 
 
 def train(args):
     print('Train')
+    
+    #Create YAML file
+    defineyaml()
 
+    #Load YAML file
     
 
 def pretest(args):
@@ -356,7 +368,7 @@ if __name__ == '__main__':
                         help='Whether to format testing data')
     parser.add_argument('--test', action='store_true',
                         help='Whether to test model')
-    #File paths
+    #Input file paths
     parser.add_argument('--sardir',
                         help='Folder of SAR imagery files')
     parser.add_argument('--opticaldir',
@@ -365,22 +377,31 @@ if __name__ == '__main__':
                         help='Folder of building footprint vector files')
     parser.add_argument('--rotationfile',
                         help='File of data acquisition directions')
-    #parser.add_argument('--datadir',
-    #                    help='Folder in which to save data and results')
-    #parser.add_argument('--datadir',
-    #                    help='Folder in which to save preprocessed data')
-    #parser.add_argument('--resdir',
-    #                    help='Folder in which to save weights and results')
+    #Preprocessed file paths
     parser.add_argument('--maskdir',
                         help='Where to save building footprint masks')
     parser.add_argument('--sarprocdir',
-                        help='Where to save preprocessed SAR imagery files')
+                        help='Where to save preprocessed SAR training files')
     parser.add_argument('--opticalprocdir',
                         help='Where to save preprocessed optical image files')
+    parser.add_argument('--sartestdir',
+                        help='Where to save preprocessed SAR testing files')
+    #Reference CSV file paths
     parser.add_argument('--traincsv',
                         help='Where to save reference CSV of training data')
     parser.add_argument('--validcsv',
                         help='Where to save reference CSV of validation data')
+    parser.add_argument('--testcsv',
+                        help='Where to save reference CSV of testing data')
+    #YAML file path
+    parser.add_argument('--yamlpath',
+                        help='Where to save YAML file')
+    #Model weights file path
+    parser.add_argument('--modeldir',
+                        help='Where to save model weights')
+    #Testing (inference) file paths
+    parser.add_argument('--testoutdir',
+                        help='Where to save test continuous segmentation maps')
     #Algorithm settings
     parser.add_argument('--rotate', action='store_true',
                         help='Rotate tiles to align imaging direction')
