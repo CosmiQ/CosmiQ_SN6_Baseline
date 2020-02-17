@@ -135,7 +135,6 @@ def pretrain(args):
     redge = 596700-450
     numgroups = 5
     for i, (sarpath, opticalpath, labelpath, maskpath, sarprocpath, opticalprocpath) in tqdm.tqdm(enumerate(zip(sarpaths, opticalpaths, labelpaths, maskpaths, sarprocpaths, opticalprocpaths)), total=len(sarpaths)):
-        """
         #Generate mask
         gdf = gpd.read_file(labelpath)
         if args.mintrainsize is not None:
@@ -158,7 +157,7 @@ def pretrain(args):
         copyrotateimage(sarpath, sarprocpath, rotate=rotationflagbool)
         if args.opticaldir is not None:
             copyrotateimage(opticalpath, opticalprocpath, rotate=rotationflagbool)
-        """
+
         #Assign the tile to one of a small number of groups, for setting
         #aside validation data (or for k-fold cross-validation, not used here).
         #Caveats: These groups slightly overlap each other.  Also, they are
