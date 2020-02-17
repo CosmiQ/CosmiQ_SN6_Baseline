@@ -11,11 +11,14 @@ import argparse
 import numpy as np
 import pandas as pd
 import geopandas as gpd
+import torch
 import gdal
 import tqdm
 
 import solaris as sol
 
+import model
+import loss
 
 def makeemptyfolder(path):
     """
@@ -114,6 +117,7 @@ def pretrain(args):
         folders.append(args.opticalprocdir)
     for folder in folders:
         makeemptyfolder(folder)
+    pathlib.Path(args.modeldir).mkdir(exist_ok=True)
 
     #Look up how to rotate masks and images, if enabled
     if args.rotate:
@@ -182,8 +186,8 @@ def pretrain(args):
 
 
 #Small wrapper class to apply sigmoid and mask to output of a Module class.
-class Sigmoid_and_Mask(nn.Module):
-    def __init__(self, WrappedClass=SeResNext50_9ch_Unet):
+class Sigmoid_and_Mask(torch.nn.Module):
+    def __init__(self, WrappedClass=model.SeResNext50_9ch_Unet):
         super(Sigmoid_and_Mask, self).__init__()
         self.innermodel = WrappedClass()
     def forward(self, x):
@@ -198,7 +202,7 @@ seresnext50_dict = {
     'model_name': 'SeResNext50_9ch_Unet',#'Sigmoid_and_Mask',
     'weight_path': None,
     'weight_url': None,
-    'arch': SeResNext50_9ch_Unet#Sigmoid_and_Mask
+    'arch': model.SeResNext50_9ch_Unet#Sigmoid_and_Mask
 }
 
 
@@ -352,8 +356,8 @@ def train(args):
 
     #Instantiate trainer and train
     config = sol.utils.config.parse(args.yamlpath)
-    custom_losses = {'ScaledTorchDiceLoss' : ScaledTorchDiceLoss,
-                     'ScaledTorchFocalLoss' : ScaledTorchFocalLoss}
+    custom_losses = {'ScaledTorchDiceLoss' : loss.ScaledTorchDiceLoss,
+                     'ScaledTorchFocalLoss' : loss.ScaledTorchFocalLoss}
     trainer = sol.nets.train.Trainer(config, custom_model_dict=seresnext50_dict, custom_losses=custom_losses)
     trainer.train()
 

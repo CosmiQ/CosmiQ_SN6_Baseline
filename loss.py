@@ -2,6 +2,9 @@
 Scale loss functions so that mostly-undefined images won't be given undue weight.  Loss functions are adapted from Solaris.
 """
 
+import torch
+import torch.nn as nn
+
 class ScaledTorchDiceLoss(nn.Module):
     def __init__(self, scale=True, reduce=True, logits=False):
         super().__init__()

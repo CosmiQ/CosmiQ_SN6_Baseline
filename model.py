@@ -11,7 +11,7 @@ from torch import nn
 import torch.nn.functional as F
 from torch.utils import model_zoo
 
-channel_count = 1
+channel_count = 4
 
 pretrained_settings = {
         'se_resnext50_32x4d': {
