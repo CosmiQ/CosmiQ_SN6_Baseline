@@ -365,6 +365,12 @@ if __name__ == '__main__':
                         help='Folder of building footprint vector files')
     parser.add_argument('--rotationfile',
                         help='File of data acquisition directions')
+    #parser.add_argument('--datadir',
+    #                    help='Folder in which to save data and results')
+    #parser.add_argument('--datadir',
+    #                    help='Folder in which to save preprocessed data')
+    #parser.add_argument('--resdir',
+    #                    help='Folder in which to save weights and results')
     parser.add_argument('--maskdir',
                         help='Where to save building footprint masks')
     parser.add_argument('--sarprocdir',
