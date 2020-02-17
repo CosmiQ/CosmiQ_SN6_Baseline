@@ -193,7 +193,7 @@ class Sigmoid_and_Mask(nn.Module):
         return maskout
 
 
-#Custom model dictionary
+#Custom model dictionary, defined globally
 seresnext50_dict = {
     'model_name': 'SeResNext50_9ch_Unet',#'Sigmoid_and_Mask',
     'weight_path': None,
@@ -202,7 +202,7 @@ seresnext50_dict = {
 }
 
 
-def defineyaml:
+def defineyaml():
     #YAML
     yamlcontents = """
 model_name: SeResNext50_9ch_Unet #xdxd_spacenet4 or SeResNext50_9ch_Unet or Sigmoid_and_Mask
@@ -342,13 +342,21 @@ inference:
 
 
 def train(args):
+    """
+    Trains the model.
+    """
     print('Train')
     
     #Create YAML file
     defineyaml()
 
-    #Load YAML file
-    
+    #Instantiate trainer and train
+    config = sol.utils.config.parse(args.yamlpath)
+    custom_losses = {'ScaledTorchDiceLoss' : ScaledTorchDiceLoss,
+                     'ScaledTorchFocalLoss' : ScaledTorchFocalLoss}
+    trainer = sol.nets.train.Trainer(config, custom_model_dict=seresnext50_dict, custom_losses=custom_losses)
+    trainer.train()
+
 
 def pretest(args):
     print('Pretest')
