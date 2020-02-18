@@ -395,8 +395,8 @@ def pretest(args):
 
         #Add row to Pandas dataframe of testing data
         testdf = testdf.append({
-            'image': sarpath,
-            }, ignore_index=True)
+            'image': sarpath
+        }, ignore_index=True)
 
     #Write reference CSVs for testing
     testdf.to_csv(args.testcsv, index=False)
