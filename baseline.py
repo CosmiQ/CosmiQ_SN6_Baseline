@@ -11,9 +11,10 @@ import argparse
 import numpy as np
 import pandas as pd
 import geopandas as gpd
+import skimage
 import torch
-import gdal
 import tqdm
+import gdal
 
 import solaris as sol
 
@@ -427,7 +428,9 @@ def test(args):
     #Run inference on the test data
     config = sol.utils.config.parse(args.yamlpath)
     inferer = sol.nets.infer.Inferer(config, custom_model_dict=seresnext50_dict)
-    inferer()
+    print('Start inference.')
+    #inferer()
+    print('Finished inference.')
 
     #Binary and vector inference output
     driver = gdal.GetDriverByName('GTiff')
@@ -435,12 +438,16 @@ def test(args):
     sourcefolder = config['inference']['output_dir']
     sourcefiles = sorted(glob.glob(os.path.join(sourcefolder, '*')))
     rotationdf = readrotationfile(args.rotationfile)
+    if args.mintestsize is not None:
+        minbuildingsize = float(args.mintestsize)
+    else:
+        minbuildingsize = 0
     for sourcefile in tqdm.tqdm(sourcefiles, total=len(sourcefiles)):
         filename = os.path.basename(sourcefile)
         destfile = os.path.join(args.testbinarydir, filename)
 
         #Create binary array
-        cutoff = 0.5
+        cutoff = 0.
         sourcedataorig = gdal.Open(sourcefile).ReadAsArray()
         sourcedata = np.zeros(np.shape(sourcedataorig), dtype='int')
         sourcedata[np.where(sourcedataorig > cutoff)] = 255
@@ -465,7 +472,7 @@ def test(args):
         else:
             rotationflag = 0
         rotationflagbool = rotationflag == 1
-        if rotateflag:
+        if rotationflag:
             sourcedatarotated = np.fliplr(np.flipud(sourcedata))
         else:
             sourcedatarotated = sourcedata
@@ -473,7 +480,7 @@ def test(args):
         #Save vector file (geojson)
         vectorname = '.'.join(filename.split('.')[:-1]) + '.geojson'
         vectorfile = os.path.join(args.testvectordir, vectorname)
-        referencefile = os.path.join(datadir, 'tiles', filename)
+        referencefile = os.path.join(args.testprocdir, filename)
         vectordata = sol.vector.mask.mask_to_poly_geojson(
             sourcedatarotated,
             reference_im=referencefile,
@@ -497,8 +504,32 @@ def test(args):
         else:
             proposalcsv = proposalcsv.append(csvaddition)
             firstfile = False
+        print(csvaddition)
 
     proposalcsv.to_csv(args.outputcsv, index=False)
+
+
+def evaluation(args):
+    """
+    Compares infered test data vector labels to ground truth.
+    """
+    truthpath = os.path.join(os.path.dirname(args.outputcsv), 'SN6_Test_Public_AOI_11_Rotterdam_Buildings.csv')
+    proposalpath = args.outputcsv
+    minevalsize = 20
+
+    evaluator = sol.eval.base.Evaluator(truthpath)
+    evaluator.load_proposal(proposalpath, proposalCSV=True, conf_field_list=[])
+    report = evaluator.eval_iou_spacenet_csv(miniou=0.5, min_area=minevalsize)
+
+    tp = 0
+    fp = 0
+    fn = 0
+    for entry in report:
+        tp += entry['TruePos']
+        fp += entry['FalsePos']
+        fn += entry['FalseNeg']
+    f1score = (2*tp) / (2*tp + fp + fn)
+    print('Vector F1: {}'.format(f1score))
 
 
 if __name__ == '__main__':
@@ -563,7 +594,7 @@ if __name__ == '__main__':
     parser.add_argument('--mintestsize',
                         help='Minimum size to output during testing')
     parser.add_argument('--uselastmodel', action='store_true',
-                        help='Do not overwrite last model with best model'
+                        help='Do not overwrite last model with best model')
     args = parser.parse_args(sys.argv[1:])
 
     if args.pretrain:
@@ -574,3 +605,5 @@ if __name__ == '__main__':
         pretest(args)
     if args.test:
         test(args)
+    if args.eval:
+        evaluation(args)
