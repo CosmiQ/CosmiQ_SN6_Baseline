@@ -402,7 +402,103 @@ def pretest(args):
     testdf.to_csv(args.testcsv, index=False)
 
 def test(args):
+    """
+    Uses the trained model to conduct inference on the test dataset.
+    Outputs are a continuously-varying pixel map, a binary pixel map,
+    and a CSV file of vector labels for evaluation.
+    """
     print('Test')
+
+    #Overwrite last model with best model
+    modelfiles = sorted(glob.glob(os.path.join(args.modeldir, 'best*.model')))
+    timestamps = [os.path.getmtime(modelfile) for modelfile in modelfiles]
+    latestindex = timestamps.index(max(timestamps))
+    modelfile = modelfiles[latestindex]
+    print(modelfile)
+    if not args.uselastmodel:
+        destfile = os.path.join(args.modeldir, 'last.model')
+        shutil.copyfile(modelfile, destfile, follow_symlinks=True)
+
+    #Create empty folders to hold various inference outputs
+    folders = [args.testoutdir, args.testbinarydir, args.testvectordir]
+    for folder in folders:
+        makeemptyfolder(folder)
+
+    #Run inference on the test data
+    config = sol.utils.config.parse(args.yamlpath)
+    inferer = sol.nets.infer.Inferer(config, custom_model_dict=seresnext50_dict)
+    inferer()
+
+    #Binary and vector inference output
+    driver = gdal.GetDriverByName('GTiff')
+    firstfile = True
+    sourcefolder = config['inference']['output_dir']
+    sourcefiles = sorted(glob.glob(os.path.join(sourcefolder, '*')))
+    rotationdf = readrotationfile(args.rotationfile)
+    for sourcefile in tqdm.tqdm(sourcefiles, total=len(sourcefiles)):
+        filename = os.path.basename(sourcefile)
+        destfile = os.path.join(args.testbinarydir, filename)
+
+        #Create binary array
+        cutoff = 0.5
+        sourcedataorig = gdal.Open(sourcefile).ReadAsArray()
+        sourcedata = np.zeros(np.shape(sourcedataorig), dtype='int')
+        sourcedata[np.where(sourcedataorig > cutoff)] = 255
+        sourcedata[np.where(sourcedataorig <= cutoff)] = 0
+
+        #Remove small buildings
+        if minbuildingsize>0:
+            regionlabels, regioncount = skimage.measure.label(sourcedata, background=0, connectivity=1, return_num=True)
+            regionproperties = skimage.measure.regionprops(regionlabels)
+            for bl in range(regioncount):
+                if regionproperties[bl].area < minbuildingsize:
+                    sourcedata[regionlabels == bl+1] = 0
+
+        #Save binary image
+        destdata = driver.Create(destfile, sourcedata.shape[1], sourcedata.shape[0], 1, gdal.GDT_Byte)
+        destdata.GetRasterBand(1).WriteArray(sourcedata)
+        del destdata
+
+        #Rotate source data back to real-world orientation before vectorizing
+        if args.rotate:
+            rotationflag = lookuprotation(filename, rotationdf)
+        else:
+            rotationflag = 0
+        rotationflagbool = rotationflag == 1
+        if rotateflag:
+            sourcedatarotated = np.fliplr(np.flipud(sourcedata))
+        else:
+            sourcedatarotated = sourcedata
+
+        #Save vector file (geojson)
+        vectorname = '.'.join(filename.split('.')[:-1]) + '.geojson'
+        vectorfile = os.path.join(args.testvectordir, vectorname)
+        referencefile = os.path.join(datadir, 'tiles', filename)
+        vectordata = sol.vector.mask.mask_to_poly_geojson(
+            sourcedatarotated,
+            reference_im=referencefile,
+            output_path=vectorfile,
+            output_type='geojson',
+            min_area=0,
+            bg_threshold=128,
+            do_transform=True,
+            simplify=True
+        )
+
+        #Add to the cumulative inference CSV file
+        csvaddition = pd.DataFrame({'ImageId': filename,
+                                    'BuildingId': 0,
+                                    'PolygonWKT_Pix': vectordata['geometry'],
+                                    'Confidence': 1
+        })
+        csvaddition['buildingId'] = range(len(csvaddition))
+        if firstfile:
+            proposalcsv = csvaddition
+        else:
+            proposalcsv = proposalcsv.append(csvaddition)
+            firstfile = False
+
+    proposalcsv.to_csv(args.outputcsv, index=False)
 
 
 if __name__ == '__main__':
@@ -416,6 +512,8 @@ if __name__ == '__main__':
                         help='Whether to format testing data')
     parser.add_argument('--test', action='store_true',
                         help='Whether to test model')
+    parser.add_argument('--eval', action='store_true',
+                        help='Whether to evaluate test output')
     #Training: Input file paths
     parser.add_argument('--sardir',
                         help='Folder of SAR training imagery files')
@@ -451,11 +549,21 @@ if __name__ == '__main__':
                         help='Where to save preprocessed SAR testing files')
     parser.add_argument('--testoutdir',
                         help='Where to save test continuous segmentation maps')
+    parser.add_argument('--testbinarydir',
+                        help='Where to save test binary segmentation maps')
+    parser.add_argument('--testvectordir',
+                        help='Where to save test vector label output')
+    parser.add_argument('--outputcsv',
+                        help='Where to save labels inferred from test data')
     #Algorithm settings
     parser.add_argument('--rotate', action='store_true',
                         help='Rotate tiles to align imaging direction')
     parser.add_argument('--mintrainsize',
                         help='Minimum building size (m^2) for training')
+    parser.add_argument('--mintestsize',
+                        help='Minimum size to output during testing')
+    parser.add_argument('--uselastmodel', action='store_true',
+                        help='Do not overwrite last model with best model'
     args = parser.parse_args(sys.argv[1:])
 
     if args.pretrain:
