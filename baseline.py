@@ -498,13 +498,12 @@ def test(args):
                                     'PolygonWKT_Pix': vectordata['geometry'],
                                     'Confidence': 1
         })
-        csvaddition['buildingId'] = range(len(csvaddition))
+        csvaddition['BuildingId'] = range(len(csvaddition))
         if firstfile:
             proposalcsv = csvaddition
+            firstfile = False
         else:
             proposalcsv = proposalcsv.append(csvaddition)
-            firstfile = False
-        print(csvaddition)
 
     proposalcsv.to_csv(args.outputcsv, index=False)
 
