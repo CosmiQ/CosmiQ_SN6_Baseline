@@ -383,8 +383,8 @@ def pretest(args):
 
     #Copy SAR test images to local folder, with optional rotation
     #Also create Pandas dataframe of testing data
-    testdf = pd.DataFrame(columns=['image', 'label'])
-    for i, (sarpath, sarprocpath) in tqdm, tqdm(enumerate(zip(sarpaths, sarprocpaths)), total=len(sarpaths)):
+    testdf = pd.DataFrame(columns=['image'])
+    for i, (sarpath, sarprocpath) in tqdm.tqdm(enumerate(zip(sarpaths, sarprocpaths)), total=len(sarpaths)):
         #Copy SAR test imagery, with optional rotation
         if args.rotate:
             rotationflag = lookuprotation(sarpath, rotationdf)
