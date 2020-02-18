@@ -94,7 +94,7 @@ def pretrain(args):
     as well as raster label masks.
     """
     print('Pretrain')
-    assert(args.sardir is not None and args.labeldir is not None and args.maskdir is not None)
+    assert(args.sardir is not None and args.labeldir is not None and args.maskdir is not None and args.sarprocdir is not None)
 
     #Get paths to relevant files
     sarpaths = glob.glob(os.path.join(args.sardir, '*.tif'))
@@ -131,8 +131,8 @@ def pretrain(args):
                                     'sarimage',
                                     'label',
                                     'group'])
-    ledge = 592000-450
-    redge = 596700-450
+    ledge = 591550
+    redge = 596250
     numgroups = 5
     for i, (sarpath, opticalpath, labelpath, maskpath, sarprocpath, opticalprocpath) in tqdm.tqdm(enumerate(zip(sarpaths, opticalpaths, labelpaths, maskpaths, sarprocpaths, opticalprocpaths)), total=len(sarpaths)):
         #Generate mask
@@ -362,8 +362,45 @@ def train(args):
 
 
 def pretest(args):
+    """
+    Create rotated versions of imagery used for testing.
+    """
     print('Pretest')
-    
+    assert(args.testdir is not None and args.testprocdir is not None)
+
+    #Get paths to relevant files
+    sarpaths = glob.glob(os.path.join(args.testdir, '*.tif'))
+    sarpaths.sort()
+    sarprocpaths = [os.path.join(args.testprocdir, os.path.basename(sarpath)) for sarpath in sarpaths]
+
+    #Create empty folder to hold processed test SAR images
+    makeemptyfolder(args.testprocdir)
+
+    #Look up how to rotate masks and images, if enabled
+    if args.rotate:
+        assert(args.rotationfile is not None)
+        rotationdf = readrotationfile(args.rotationfile)
+
+    #Copy SAR test images to local folder, with optional rotation
+    #Also create Pandas dataframe of testing data
+    testdf = pd.DataFrame(columns=['image', 'label'])
+    for i, (sarpath, sarprocpath) in tqdm, tqdm(enumerate(zip(sarpaths, sarprocpaths)), total=len(sarpaths)):
+        #Copy SAR test imagery, with optional rotation
+        if args.rotate:
+            rotationflag = lookuprotation(sarpath, rotationdf)
+        else:
+            rotationflag = 0
+        rotationflagbool = rotationflag == 1
+        copyrotateimage(sarpath, sarprocpath, rotate=rotationflagbool)
+
+        #Add row to Pandas dataframe of testing data
+        testdf = testdf.append({
+            'image': sarpath,
+            }, ignore_index=True)
+
+    #Write reference CSVs for testing
+    testdf.to_csv(args.testcsv, index=False)
+
 def test(args):
     print('Test')
 
@@ -379,38 +416,39 @@ if __name__ == '__main__':
                         help='Whether to format testing data')
     parser.add_argument('--test', action='store_true',
                         help='Whether to test model')
-    #Input file paths
+    #Training: Input file paths
     parser.add_argument('--sardir',
-                        help='Folder of SAR imagery files')
+                        help='Folder of SAR training imagery files')
     parser.add_argument('--opticaldir',
                         help='Folder of optical imagery files')
     parser.add_argument('--labeldir',
                         help='Folder of building footprint vector files')
     parser.add_argument('--rotationfile',
                         help='File of data acquisition directions')
-    #Preprocessed file paths
+    #Training: Preprocessed file paths
     parser.add_argument('--maskdir',
                         help='Where to save building footprint masks')
     parser.add_argument('--sarprocdir',
                         help='Where to save preprocessed SAR training files')
     parser.add_argument('--opticalprocdir',
                         help='Where to save preprocessed optical image files')
-    parser.add_argument('--sartestdir',
-                        help='Where to save preprocessed SAR testing files')
-    #Reference CSV file paths
+    #Training and inference: YAML and Reference CSV file paths
     parser.add_argument('--traincsv',
                         help='Where to save reference CSV of training data')
     parser.add_argument('--validcsv',
                         help='Where to save reference CSV of validation data')
     parser.add_argument('--testcsv',
                         help='Where to save reference CSV of testing data')
-    #YAML file path
     parser.add_argument('--yamlpath',
                         help='Where to save YAML file')
-    #Model weights file path
+    #Training and inference: Model weights file path
     parser.add_argument('--modeldir',
                         help='Where to save model weights')
-    #Testing (inference) file paths
+    #Inference (testing) file paths
+    parser.add_argument('--testdir',
+                        help='Folder of SAR testing imagery files')
+    parser.add_argument('--testprocdir',
+                        help='Where to save preprocessed SAR testing files')
     parser.add_argument('--testoutdir',
                         help='Where to save test continuous segmentation maps')
     #Algorithm settings
