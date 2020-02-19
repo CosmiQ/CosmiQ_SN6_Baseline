@@ -438,10 +438,7 @@ def test(args):
     sourcefolder = config['inference']['output_dir']
     sourcefiles = sorted(glob.glob(os.path.join(sourcefolder, '*')))
     rotationdf = readrotationfile(args.rotationfile)
-    if args.mintestsize is not None:
-        minbuildingsize = float(args.mintestsize)
-    else:
-        minbuildingsize = 0
+    minbuildingsize = float(args.mintestsize) if args.mintestsize is not None else 0
     for sourcefile in tqdm.tqdm(sourcefiles, total=len(sourcefiles)):
         filename = os.path.basename(sourcefile)
         destfile = os.path.join(args.testbinarydir, filename)
@@ -477,23 +474,24 @@ def test(args):
         else:
             sourcedatarotated = sourcedata
 
-        #Save vector file (geojson)
-        vectorname = '.'.join(filename.split('.')[:-1]) + '.geojson'
+        #Save vector file (CSV)
+        vectorname = '.'.join(filename.split('.')[:-1]) + '.csv'
         vectorfile = os.path.join(args.testvectordir, vectorname)
         referencefile = os.path.join(args.testprocdir, filename)
         vectordata = sol.vector.mask.mask_to_poly_geojson(
             sourcedatarotated,
-            reference_im=referencefile,
+            #reference_im=referencefile,
             output_path=vectorfile,
-            output_type='geojson',
+            output_type='csv',
             min_area=0,
             bg_threshold=128,
-            do_transform=True,
+            do_transform=False,
             simplify=True
         )
 
         #Add to the cumulative inference CSV file
-        csvaddition = pd.DataFrame({'ImageId': filename,
+        tilename = '_'.join(os.path.splitext(filename)[0].split('_')[-4:])
+        csvaddition = pd.DataFrame({'ImageId': tilename,
                                     'BuildingId': 0,
                                     'PolygonWKT_Pix': vectordata['geometry'],
                                     'Confidence': 1
