@@ -98,21 +98,23 @@ def reorderbands(srcpath, dstpath, bandlist, deletesource=False):
         srcpath = srcpath + str(uuid.uuid4())
         shutil.move(dstpath, srcpath)
         deletesource = True
-        
+
     driver = gdal.GetDriverByName('GTiff')
     tilefile = gdal.Open(srcpath)
+    geotransform = tilefile.GetGeoTransform()
+    projection = tilefile.GetProjection()
     numbands = len(bandlist)
-    copyfile = driver.Create(dstpath, tilefile.shape[1], tilefile.shape[0],
-                             numbands, strict=0)
+    shape = tilefile.GetRasterBand(1).ReadAsArray().shape
+    copyfile = driver.Create(dstpath, shape[1], shape[0],
+                             numbands, gdal.GDT_Byte)
     for bandnum in range(1, numbands+1):
         banddata = tilefile.GetRasterBand(bandlist[bandnum-1]).ReadAsArray()
         copyfile.GetRasterBand(bandnum).WriteArray(banddata)
+    copyfile.SetGeoTransform(geotransform)
+    copyfile.SetProjection(projection)
     copyfile.FlushCache()
     copyfile = None
     tilefile = None
-
-    #tilefile = gdal.Open(srcpath)
-    #gdal.Translate(dstpath, tilefile, b=3, b=1, b=1, b=2) #HARDWIRED ORDER
 
     if deletesource:
         os.remove(srcpath)
@@ -192,8 +194,7 @@ def pretrain(args):
             copyrotateimage(opticalpath, opticalprocpath,
                             rotate=rotationflagbool)
             if reorganizeoptical:
-                   reorderbands(opticalprocpath, opticalprocpath,
-                                [3, 1, 1, 2])
+                reorderbands(opticalprocpath, opticalprocpath, [3,1,1,2])
 
         #Assign the tile to one of a small number of groups, for setting
         #aside validation data (or for k-fold cross-validation, not used here).
