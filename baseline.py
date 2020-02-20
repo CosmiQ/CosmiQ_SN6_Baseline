@@ -85,14 +85,44 @@ def copyrotateimage(srcpath, dstpath, rotate=False, deletesource=False):
         tilefile = None
 
     if deletesource:
-        #print('Deleting %s' % (srcpath))
+        os.remove(srcpath)
+
+
+def reorderbands(srcpath, dstpath, bandlist, deletesource=False):
+    """
+    Copies a TIFF image from srcpath to dstpath, reordering the bands.
+    """
+    #Handles special case where source path and destination path are the same
+    if srcpath==dstpath:
+        #Move file to temporary location before continuing
+        srcpath = srcpath + str(uuid.uuid4())
+        shutil.move(dstpath, srcpath)
+        deletesource = True
+        
+    driver = gdal.GetDriverByName('GTiff')
+    tilefile = gdal.Open(srcpath)
+    numbands = len(bandlist)
+    copyfile = driver.Create(dstpath, tilefile.shape[1], tilefile.shape[0],
+                             numbands, strict=0)
+    for bandnum in range(1, numbands+1):
+        banddata = tilefile.GetRasterBand(bandlist[bandnum-1]).ReadAsArray()
+        copyfile.GetRasterBand(bandnum).WriteArray(banddata)
+    copyfile.FlushCache()
+    copyfile = None
+    tilefile = None
+
+    #tilefile = gdal.Open(srcpath)
+    #gdal.Translate(dstpath, tilefile, b=3, b=1, b=1, b=2) #HARDWIRED ORDER
+
+    if deletesource:
         os.remove(srcpath)
 
 
 def pretrain(args):
     """
     Creates rotated versions of imagery used for training
-    as well as raster label masks.
+    as well as raster label masks.  Optical bands are re-ordered to
+    mimic SAR bands.
     """
     print('Pretrain')
     assert(args.sardir is not None and args.labeldir is not None and args.maskdir is not None and args.sarprocdir is not None)
@@ -127,14 +157,16 @@ def pretrain(args):
 
     #Create masks, with optional rotation and optional size threshold
     #Also copy SAR and optical imagery to local folder, with optional rotation
+    #Optical files are optionally modified to more closely resemble SAR
     #Also create Pandas dataframe of training data
     combodf = pd.DataFrame(columns=['opticalimage',
                                     'sarimage',
                                     'label',
                                     'group'])
-    ledge = 591550
-    redge = 596250
+    ledge = 591550 #Approximate west edge of training data area
+    redge = 596250 #Approximate east edge of training data area
     numgroups = 5
+    reorganizeoptical = True
     for i, (sarpath, opticalpath, labelpath, maskpath, sarprocpath, opticalprocpath) in tqdm.tqdm(enumerate(zip(sarpaths, opticalpaths, labelpaths, maskpaths, sarprocpaths, opticalprocpaths)), total=len(sarpaths)):
         #Generate mask
         gdf = gpd.read_file(labelpath)
@@ -157,7 +189,11 @@ def pretrain(args):
         rotationflagbool = rotationflag == 1
         copyrotateimage(sarpath, sarprocpath, rotate=rotationflagbool)
         if args.opticaldir is not None:
-            copyrotateimage(opticalpath, opticalprocpath, rotate=rotationflagbool)
+            copyrotateimage(opticalpath, opticalprocpath,
+                            rotate=rotationflagbool)
+            if reorganizeoptical:
+                   reorderbands(opticalprocpath, opticalprocpath,
+                                [3, 1, 1, 2])
 
         #Assign the tile to one of a small number of groups, for setting
         #aside validation data (or for k-fold cross-validation, not used here).
@@ -172,6 +208,9 @@ def pretrain(args):
             'opticalimage': opticalpath,
             'label': maskpath,
             'group': groupnum}, ignore_index=True)
+
+        if i==50:
+            break
 
     #Write reference CSVs for training
     for i in range(numgroups+1):
@@ -429,7 +468,7 @@ def test(args):
     config = sol.utils.config.parse(args.yamlpath)
     inferer = sol.nets.infer.Inferer(config, custom_model_dict=seresnext50_dict)
     print('Start inference.')
-    #inferer()
+    inferer()
     print('Finished inference.')
 
     #Binary and vector inference output
