@@ -290,7 +290,7 @@ training:
   epochs:  100000
   steps_per_epoch:
   optimizer: AdamW #Adam or AdamW
-  lr: .5e-4
+  lr: 1e-4
   opt_args:
   loss:
     #bcewithlogits:
@@ -512,7 +512,7 @@ def evaluation(args):
     """
     truthpath = os.path.join(os.path.dirname(args.outputcsv), 'SN6_Test_Public_AOI_11_Rotterdam_Buildings.csv')
     proposalpath = args.outputcsv
-    minevalsize = 20
+    minevalsize = 80
 
     evaluator = sol.eval.base.Evaluator(truthpath)
     evaluator.load_proposal(proposalpath, proposalCSV=True, conf_field_list=[])
