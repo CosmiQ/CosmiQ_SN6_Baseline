@@ -205,13 +205,10 @@ def pretrain(args):
         sarx = sartransform[0]
         groupnum = min(numgroups-1, max(0, math.floor((sarx-ledge) / (redge-ledge) * numgroups)))
         combodf = combodf.append({
-            'sarimage': sarpath,
-            'opticalimage': opticalpath,
+            'sarimage': sarprocpath,
+            'opticalimage': opticalprocpath,
             'label': maskpath,
             'group': groupnum}, ignore_index=True)
-
-        if i==50:
-            break
 
     #Write reference CSVs for training
     for i in range(numgroups+1):
@@ -436,7 +433,7 @@ def pretest(args):
 
         #Add row to Pandas dataframe of testing data
         testdf = testdf.append({
-            'image': sarpath
+            'image': sarprocpath
         }, ignore_index=True)
 
     #Write reference CSVs for testing
