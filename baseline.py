@@ -281,11 +281,11 @@ training_augmentation:
       p: 0.5
     #RandomRotate90:
     #  p: 0.5
-    #Rotate:
-    #  limit: 5
-    #  border_mode: constant
-    #  cval: 0
-    #  p: 0.5
+    Rotate:
+      limit: 22.5
+      border_mode: constant
+      cval: 0
+      p: 1.0
     RandomCrop:
       height: 512
       width: 512
@@ -324,7 +324,7 @@ inference_augmentation:
       p: 1.0
   p: 1.0
 training:
-  epochs:  100000
+  epochs: 100000
   steps_per_epoch:
   optimizer: AdamW #Adam or AdamW
   lr: 1e-4
