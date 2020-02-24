@@ -264,7 +264,7 @@ model_path:
 train: true
 infer: true
 
-pretrained: yes
+pretrained: true
 nn_framework:  torch
 batch_size: 8
 
@@ -530,24 +530,26 @@ def train(args):
     """
     print('Train')
     
-    #Create YAML file
+    #Create YAML files
     defineyaml()
     defineopticalyaml()
 
-    #Start by training on optical imagery for transfer learning
-    """
-    config = sol.utils.config.parse(args.opticalyamlpath)
+    #Define custom losses
     custom_losses = {'ScaledTorchDiceLoss' : loss.ScaledTorchDiceLoss,
                      'ScaledTorchFocalLoss' : loss.ScaledTorchFocalLoss}
-    trainer = sol.nets.train.Trainer(config, custom_model_dict=optical_dict, custom_losses=custom_losses)
-    trainer.train()
-    """
 
-    #Instantiate trainer and train
-    seresnext50_dict['weight_path'] = os.path.join(args.modeldir, 'optical.model')
+    #Start by training on optical imagery for transfer learning
+    if args.transferoptical:
+        config = sol.utils.config.parse(args.opticalyamlpath)
+        trainer = sol.nets.train.Trainer(config, custom_model_dict=optical_dict, custom_losses=custom_losses)
+        trainer.train()
+
+    #Instantiate trainer and train on SAR imagery
     config = sol.utils.config.parse(args.yamlpath)
-    custom_losses = {'ScaledTorchDiceLoss' : loss.ScaledTorchDiceLoss,
-                     'ScaledTorchFocalLoss' : loss.ScaledTorchFocalLoss}
+    if args.transferoptical:
+        seresnext50_dict['weight_path'] = os.path.join(args.modeldir, 'optical.model')
+    else:
+        config.pretrained = False
     trainer = sol.nets.train.Trainer(config, custom_model_dict=seresnext50_dict, custom_losses=custom_losses)
     trainer.train()
 
@@ -782,6 +784,8 @@ if __name__ == '__main__':
     #Algorithm settings
     parser.add_argument('--rotate', action='store_true',
                         help='Rotate tiles to align imaging direction')
+    parser.add_argument('--transferoptical', action='store_true',
+                        help='Train model on optical before training on SAR')
     parser.add_argument('--mintrainsize',
                         help='Minimum building size (m^2) for training')
     parser.add_argument('--mintestsize',
