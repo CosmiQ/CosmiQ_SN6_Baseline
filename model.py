@@ -16,7 +16,7 @@ channel_count = 4
 pretrained_settings = {
         'se_resnext50_32x4d': {
         'imagenet': {
-            'url': 'http://data.lip6.fr/cadene/pretrainedmodels/se_resnext50_32x4d-a260b3a4.pth',
+            'url': '',
             'input_space': 'RGB',
             'input_size': [3, 224, 224],
             'input_range': [0, 1],
@@ -286,7 +286,7 @@ def initialize_pretrained_model(model, num_classes, settings):
 
 
 def se_resnext50_32x4d(num_classes=1000, pretrained='imagenet'):
-    model = SENet(SEResNeXtBottleneck, [channel_count, 4, 6, 3], groups=32, reduction=16, #Change first 3 to 1 if single-channel
+    model = SENet(SEResNeXtBottleneck, [channel_count, 4, 6, 3], groups=32, reduction=16,
                   dropout_p=None, inplanes=64, input_3x3=False,
                   downsample_kernel_size=1, downsample_padding=0,
                   num_classes=num_classes)
