@@ -238,12 +238,19 @@ class Sigmoid_and_Mask(torch.nn.Module):
         return maskout
 
 
-#Custom model dictionary, defined globally
+#Custom model dictionaries, defined globally
 seresnext50_dict = {
     'model_name': 'SeResNext50_9ch_Unet',#'Sigmoid_and_Mask',
     'weight_path': None,
     'weight_url': None,
     'arch': model.SeResNext50_9ch_Unet#Sigmoid_and_Mask
+}
+
+optical_dict = {
+    'model_name': 'SeResNext50_9ch_Unet',
+    'weight_path': None,
+    'weight_url': None,
+    'arch': model.SeResNext50_9ch_Unet
 }
 
 
@@ -252,11 +259,12 @@ def defineyaml():
     yamlcontents = """
 model_name: SeResNext50_9ch_Unet #xdxd_spacenet4 or SeResNext50_9ch_Unet or Sigmoid_and_Mask
 
+#model_path: $MODELDIR/optical.model
 model_path:
 train: true
 infer: true
 
-pretrained: false
+pretrained: yes
 nn_framework:  torch
 batch_size: 8
 
@@ -386,6 +394,136 @@ inference:
     yamlfile.close()
 
 
+
+def defineopticalyaml():
+    #Optical YAML
+    yamlcontents = """
+model_name: SeResNext50_9ch_Unet #xdxd_spacenet4 or SeResNext50_9ch_Unet or Sigmoid_and_Mask
+
+model_path:
+train: true
+infer: false
+
+pretrained: false
+nn_framework:  torch
+batch_size: 8
+
+data_specs:
+  width: 512
+  height: 512
+  dtype:
+  image_type: 32bit
+  rescale: false
+  rescale_minima: auto
+  rescale_maxima: auto
+  channels: 4
+  label_type: mask
+  is_categorical: false
+  mask_channels: 1
+  val_holdout_frac:
+  data_workers:
+
+training_data_csv: '$OPTICALTRAINCSV'
+validation_data_csv: '$OPTICALVALIDCSV'
+inference_data_csv:
+
+training_augmentation:
+  augmentations:
+    HorizontalFlip:
+      p: 0.5
+    #RandomRotate90:
+    #  p: 1.0
+    #Rotate:
+    #  limit: 22.5
+    #  border_mode: constant
+    #  cval: 0
+    #  p: 1.0
+    RandomCrop:
+      height: 512
+      width: 512
+      p: 1.0
+    Normalize:
+      mean:
+        - 0.5
+      std:
+        - 0.125
+      max_pixel_value: 255.0 #255.0 or 65535.0
+      p: 1.0
+  p: 1.0
+  shuffle: true
+validation_augmentation:
+  augmentations:
+    CenterCrop:
+      height: 512
+      width: 512
+      p: 1.0
+    Normalize:
+      mean:
+        - 0.5
+      std:
+        - 0.125
+      max_pixel_value: 255.0 #255.0 or 65535.0
+      p: 1.0
+  p: 1.0
+inference_augmentation:
+  augmentations:
+    Normalize:
+      mean:
+        - 0.5
+      std:
+        - 0.125
+      max_pixel_value: 255.0 #255.0 or 65535.0
+      p: 1.0
+  p: 1.0
+training:
+  epochs: 100000
+  steps_per_epoch:
+  optimizer: AdamW #Adam or AdamW
+  lr: 1e-4
+  opt_args:
+  loss:
+    #bcewithlogits:
+    #jaccard:
+    dice:
+        logits: true
+    focal:
+        logits: true
+    #ScaledTorchDiceLoss:
+    #    scale: false
+    #    logits: true
+    #ScaledTorchFocalLoss:
+    #    scale: false
+    #    logits: true
+    #bcewithlogits:
+  loss_weights:
+    #bcewithlogits: 10
+    #jaccard: 2.5
+    dice: 1.0
+    focal: 10.0
+    #ScaledTorchDiceLoss: 1.0
+    #ScaledTorchFocalLoss: 10.0
+    #bcewithlogits: 1.0
+  metrics:
+    training:
+    validation:
+  checkpoint_frequency: 10
+  callbacks:
+    model_checkpoint:
+      filepath: '$MODELDIR/opticalbest.model'
+      monitor: val_loss
+  model_dest_path: '$MODELDIR/optical.model'
+  verbose: true
+"""
+    yamlcontents = yamlcontents.replace('$OPTICALTRAINCSV',
+                                        args.opticaltraincsv)
+    yamlcontents = yamlcontents.replace('$OPTICALVALIDCSV',
+                                        args.opticalvalidcsv)
+    yamlcontents = yamlcontents.replace('$MODELDIR', args.modeldir)
+    yamlfile = open(args.opticalyamlpath, 'w')
+    yamlfile.write(yamlcontents)
+    yamlfile.close()
+
+
 def train(args):
     """
     Trains the model.
@@ -394,8 +532,19 @@ def train(args):
     
     #Create YAML file
     defineyaml()
+    defineopticalyaml()
+
+    #Start by training on optical imagery for transfer learning
+    """
+    config = sol.utils.config.parse(args.opticalyamlpath)
+    custom_losses = {'ScaledTorchDiceLoss' : loss.ScaledTorchDiceLoss,
+                     'ScaledTorchFocalLoss' : loss.ScaledTorchFocalLoss}
+    trainer = sol.nets.train.Trainer(config, custom_model_dict=optical_dict, custom_losses=custom_losses)
+    trainer.train()
+    """
 
     #Instantiate trainer and train
+    seresnext50_dict['weight_path'] = os.path.join(args.modeldir, 'optical.model')
     config = sol.utils.config.parse(args.yamlpath)
     custom_losses = {'ScaledTorchDiceLoss' : loss.ScaledTorchDiceLoss,
                      'ScaledTorchFocalLoss' : loss.ScaledTorchFocalLoss}
@@ -612,6 +761,8 @@ if __name__ == '__main__':
                         help='Where to save reference CSV of testing data')
     parser.add_argument('--yamlpath',
                         help='Where to save YAML file')
+    parser.add_argument('--opticalyamlpath',
+                        help='Where to save transfer learning YAML file')
     #Training and inference: Model weights file path
     parser.add_argument('--modeldir',
                         help='Where to save model weights')
