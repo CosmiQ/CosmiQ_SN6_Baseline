@@ -2,4 +2,4 @@
 
 source settings.sh
 
-./baseline.py --pretrain $settings
+./baseline.py --train $settings

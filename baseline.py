@@ -145,14 +145,12 @@ def pretrain(args):
         opticalprocpaths = [''] * len(sarpaths)
 
     #Create empty folders to hold masks, processed SAR, & processed optical
-    """
     folders = [args.maskdir, args.sarprocdir]
     if args.opticalprocdir is not None:
         folders.append(args.opticalprocdir)
     for folder in folders:
         makeemptyfolder(folder)
     pathlib.Path(args.modeldir).mkdir(exist_ok=True)
-    """
 
     #Look up how to rotate masks and images, if enabled
     if args.rotate:
@@ -172,7 +170,6 @@ def pretrain(args):
     numgroups = 5
     reorganizeoptical = True
     for i, (sarpath, opticalpath, labelpath, maskpath, sarprocpath, opticalprocpath) in tqdm.tqdm(enumerate(zip(sarpaths, opticalpaths, labelpaths, maskpaths, sarprocpaths, opticalprocpaths)), total=len(sarpaths)):
-        """
         #Generate mask
         gdf = gpd.read_file(labelpath)
         if args.mintrainsize is not None:
@@ -198,7 +195,6 @@ def pretrain(args):
                             rotate=rotationflagbool)
             if reorganizeoptical:
                 reorderbands(opticalprocpath, opticalprocpath, [3,1,1,2])
-        """
 
         #Assign the tile to one of a small number of groups, for setting
         #aside validation data (or for k-fold cross-validation, not used here).
