@@ -551,7 +551,7 @@ def train(args):
     if args.transferoptical:
         seresnext50_dict['weight_path'] = os.path.join(args.modeldir, 'optical.model')
     else:
-        config.pretrained = False
+        config['pretrained'] = False
     trainer = sol.nets.train.Trainer(config, custom_model_dict=seresnext50_dict, custom_losses=custom_losses)
     trainer.train()
 
