@@ -476,7 +476,7 @@ inference_augmentation:
       p: 1.0
   p: 1.0
 training:
-  epochs: 100000
+  epochs: 2
   steps_per_epoch:
   optimizer: AdamW #Adam or AdamW
   lr: 1e-4
@@ -540,9 +540,11 @@ def train(args):
 
     #Start by training on optical imagery for transfer learning
     if args.transferoptical:
+        print('Training on Optical')
         config = sol.utils.config.parse(args.opticalyamlpath)
         trainer = sol.nets.train.Trainer(config, custom_model_dict=optical_dict, custom_losses=custom_losses)
         trainer.train()
+        print('Training on SAR')
 
     #Instantiate trainer and train on SAR imagery
     config = sol.utils.config.parse(args.yamlpath)
