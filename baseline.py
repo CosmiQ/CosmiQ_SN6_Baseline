@@ -145,12 +145,14 @@ def pretrain(args):
         opticalprocpaths = [''] * len(sarpaths)
 
     #Create empty folders to hold masks, processed SAR, & processed optical
+    """
     folders = [args.maskdir, args.sarprocdir]
     if args.opticalprocdir is not None:
         folders.append(args.opticalprocdir)
     for folder in folders:
         makeemptyfolder(folder)
     pathlib.Path(args.modeldir).mkdir(exist_ok=True)
+    """
 
     #Look up how to rotate masks and images, if enabled
     if args.rotate:
@@ -170,6 +172,7 @@ def pretrain(args):
     numgroups = 5
     reorganizeoptical = True
     for i, (sarpath, opticalpath, labelpath, maskpath, sarprocpath, opticalprocpath) in tqdm.tqdm(enumerate(zip(sarpaths, opticalpaths, labelpaths, maskpaths, sarprocpaths, opticalprocpaths)), total=len(sarpaths)):
+        """
         #Generate mask
         gdf = gpd.read_file(labelpath)
         if args.mintrainsize is not None:
@@ -195,6 +198,7 @@ def pretrain(args):
                             rotate=rotationflagbool)
             if reorganizeoptical:
                 reorderbands(opticalprocpath, opticalprocpath, [3,1,1,2])
+        """
 
         #Assign the tile to one of a small number of groups, for setting
         #aside validation data (or for k-fold cross-validation, not used here).
@@ -216,10 +220,14 @@ def pretrain(args):
     validationgroup = numgroups - 1
     traindf = combodf[combodf['group'] != validationgroup]
     validdf = combodf[combodf['group'] == validationgroup]
-    traindf = traindf.loc[:, ['sarimage', 'label']].rename(columns={'sarimage':'image'})
-    validdf = validdf.loc[:, ['sarimage', 'label']].rename(columns={'sarimage':'image'})
-    traindf.to_csv(args.traincsv, index=False)
-    validdf.to_csv(args.validcsv, index=False)
+    sartraindf = traindf.loc[:, ['sarimage', 'label']].rename(columns={'sarimage':'image'})
+    sarvaliddf = validdf.loc[:, ['sarimage', 'label']].rename(columns={'sarimage':'image'})
+    opticaltraindf = traindf.loc[:, ['opticalimage', 'label']].rename(columns={'opticalimage':'image'})
+    opticalvaliddf = validdf.loc[:, ['opticalimage', 'label']].rename(columns={'opticalimage':'image'})
+    sartraindf.to_csv(args.traincsv, index=False)
+    sarvaliddf.to_csv(args.validcsv, index=False)
+    opticaltraindf.to_csv(args.opticaltraincsv, index=False)
+    opticalvaliddf.to_csv(args.opticalvalidcsv, index=False)
 
 
 #Small wrapper class to apply sigmoid and mask to output of a Module class.
@@ -600,6 +608,10 @@ if __name__ == '__main__':
                         help='Where to save reference CSV of training data')
     parser.add_argument('--validcsv',
                         help='Where to save reference CSV of validation data')
+    parser.add_argument('--opticaltraincsv',
+                        help='Where to save CSV of optical training data')
+    parser.add_argument('--opticalvalidcsv',
+                        help='Where to save CSV of optical validation data')
     parser.add_argument('--testcsv',
                         help='Where to save reference CSV of testing data')
     parser.add_argument('--yamlpath',
