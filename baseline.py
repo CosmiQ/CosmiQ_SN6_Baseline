@@ -279,20 +279,20 @@ training_augmentation:
   augmentations:
     HorizontalFlip:
       p: 0.5
-    #RandomRotate90:
-    #  p: 0.5
-    Rotate:
-      limit: 22.5
-      border_mode: constant
-      cval: 0
+    RandomRotate90:
       p: 1.0
+    #Rotate:
+    #  limit: 22.5
+    #  border_mode: constant
+    #  cval: 0
+    #  p: 1.0
     RandomCrop:
       height: 512
       width: 512
       p: 1.0
     Normalize:
       mean:
-        - 0.5
+        - 0.25
       std:
         - 0.125
       max_pixel_value: 255.0 #255.0 or 65535.0
@@ -307,7 +307,7 @@ validation_augmentation:
       p: 1.0
     Normalize:
       mean:
-        - 0.5
+        - 0.25
       std:
         - 0.125
       max_pixel_value: 255.0 #255.0 or 65535.0
@@ -317,7 +317,7 @@ inference_augmentation:
   augmentations:
     Normalize:
       mean:
-        - 0.5
+        - 0.25
       std:
         - 0.125
       max_pixel_value: 255.0 #255.0 or 65535.0
