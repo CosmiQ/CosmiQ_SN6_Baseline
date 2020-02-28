@@ -238,7 +238,7 @@ class VGG(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
 
-def make_layers(cfg, batch_norm=False, bands=3):
+def make_layers(cfg, batch_norm=False, bands=4):
     layers = []
     in_channels = bands
     for v in cfg:
