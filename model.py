@@ -3,9 +3,10 @@ SpaceNet 6 baseline neural network architecture
 Code adapted with minimal changes from these sources:
 
 TernausNet:
-https://raw.githubusercontent.com/ternaus/TernausNet/master/unet_models.py
+https://github.com/ternaus/TernausNet/blob/master/unet_models.py
 VGG-11:
-https://raw.githubusercontent.com/pytorch/vision/master/torchvision/models/vgg.py
+https://github.com/pytorch/vision/blob/master/torchvision/models/vgg.py
+https://github.com/pytorch/vision/blob/master/torchvision/models/utils.py
 """
 
 import torch
@@ -237,9 +238,9 @@ class VGG(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
 
-def make_layers(cfg, batch_norm=False):
+def make_layers(cfg, batch_norm=False, bands=3):
     layers = []
-    in_channels = 3
+    in_channels = bands
     for v in cfg:
         if v == 'M':
             layers += [nn.MaxPool2d(kernel_size=2, stride=2)]

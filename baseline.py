@@ -227,8 +227,9 @@ def pretrain(args):
 
 
 #Small wrapper class to apply sigmoid and mask to output of a Module class.
+#Not currently used
 class Sigmoid_and_Mask(torch.nn.Module):
-    def __init__(self, WrappedClass=model.SeResNext50_9ch_Unet):
+    def __init__(self, WrappedClass=model.UNet11):
         super(Sigmoid_and_Mask, self).__init__()
         self.innermodel = WrappedClass()
     def forward(self, x):
@@ -239,32 +240,31 @@ class Sigmoid_and_Mask(torch.nn.Module):
 
 
 #Custom model dictionaries, defined globally
-seresnext50_dict = {
-    'model_name': 'SeResNext50_9ch_Unet',#'Sigmoid_and_Mask',
+sar_dict = {
+    'model_name': 'unet11',
     'weight_path': None,
     'weight_url': None,
-    'arch': model.SeResNext50_9ch_Unet#Sigmoid_and_Mask
+    'arch': model.UNet11
 }
 
 optical_dict = {
-    'model_name': 'SeResNext50_9ch_Unet',
+    'model_name': 'unet11',
     'weight_path': None,
     'weight_url': None,
-    'arch': model.SeResNext50_9ch_Unet
+    'arch': model.UNet11
 }
 
 
 def defineyaml():
     #YAML
     yamlcontents = """
-model_name: SeResNext50_9ch_Unet #xdxd_spacenet4 or SeResNext50_9ch_Unet or Sigmoid_and_Mask
+model_name: unet11
 
-#model_path: $MODELDIR/optical.model
 model_path:
 train: true
 infer: true
 
-pretrained: true
+pretrained:
 nn_framework:  torch
 batch_size: 8
 
@@ -398,7 +398,7 @@ inference:
 def defineopticalyaml():
     #Optical YAML
     yamlcontents = """
-model_name: SeResNext50_9ch_Unet #xdxd_spacenet4 or SeResNext50_9ch_Unet or Sigmoid_and_Mask
+model_name: unet11
 
 model_path:
 train: true
@@ -549,10 +549,11 @@ def train(args):
     #Instantiate trainer and train on SAR imagery
     config = sol.utils.config.parse(args.yamlpath)
     if args.transferoptical:
+        config['pretrained'] = True
         seresnext50_dict['weight_path'] = os.path.join(args.modeldir, 'optical.model')
     else:
         config['pretrained'] = False
-    trainer = sol.nets.train.Trainer(config, custom_model_dict=seresnext50_dict, custom_losses=custom_losses)
+    trainer = sol.nets.train.Trainer(config, custom_model_dict=sar_dict, custom_losses=custom_losses)
     trainer.train()
 
 
