@@ -294,7 +294,7 @@ training_augmentation:
     #RandomRotate90:
     #  p: 1.0
     #Rotate:
-    #  limit: 22.5
+    #  limit: 180. #22.5
     #  border_mode: constant
     #  cval: 0
     #  p: 1.0
@@ -431,8 +431,8 @@ training_augmentation:
   augmentations:
     HorizontalFlip:
       p: 0.5
-    #RandomRotate90:
-    #  p: 1.0
+    RandomRotate90:
+      p: 1.0
     #Rotate:
     #  limit: 22.5
     #  border_mode: constant
@@ -476,7 +476,7 @@ inference_augmentation:
       p: 1.0
   p: 1.0
 training:
-  epochs: 2
+  epochs: 29999
   steps_per_epoch:
   optimizer: AdamW #Adam or AdamW
   lr: 1e-4
@@ -538,21 +538,30 @@ def train(args):
     custom_losses = {'ScaledTorchDiceLoss' : loss.ScaledTorchDiceLoss,
                      'ScaledTorchFocalLoss' : loss.ScaledTorchFocalLoss}
 
-    #Start by training on optical imagery for transfer learning
+    #Optionally start by training on optical imagery for transfer learning
     if args.transferoptical:
-        print('Training on Optical')
+        print('Training on Optical: Start')
         config = sol.utils.config.parse(args.opticalyamlpath)
         trainer = sol.nets.train.Trainer(config, custom_model_dict=optical_dict, custom_losses=custom_losses)
         trainer.train()
-        print('Training on SAR')
+        print('Training on Optical: End')
 
-    #Instantiate trainer and train on SAR imagery
+    #Load SAR configuration file
     config = sol.utils.config.parse(args.yamlpath)
     if args.transferoptical:
         config['pretrained'] = True
-        seresnext50_dict['weight_path'] = os.path.join(args.modeldir, 'optical.model')
+        sar_dict['weight_path'] = os.path.join(args.modeldir, 'optical.model')
     else:
         config['pretrained'] = False
+
+    #Optionally train on randomly-rotated SAR
+    if args.transfersar:
+        print('Training on rotated SAR: Start')
+        #config = sol.utils.config.parse(args.yamlpath)
+        #config['training_augmentation']['augmentations']
+        print('Training on rotated SAR: End')
+
+    #Instantiate trainer and train on SAR imagery
     trainer = sol.nets.train.Trainer(config, custom_model_dict=sar_dict, custom_losses=custom_losses)
     trainer.train()
 
@@ -622,7 +631,7 @@ def test(args):
 
     #Run inference on the test data
     config = sol.utils.config.parse(args.yamlpath)
-    inferer = sol.nets.infer.Inferer(config, custom_model_dict=seresnext50_dict)
+    inferer = sol.nets.infer.Inferer(config, custom_model_dict=sar_dict)
     print('Start inference.')
     inferer()
     print('Finished inference.')
@@ -789,6 +798,8 @@ if __name__ == '__main__':
                         help='Rotate tiles to align imaging direction')
     parser.add_argument('--transferoptical', action='store_true',
                         help='Train model on optical before training on SAR')
+    parser.add_argument('--transfersar', action='store_true',
+                        help='Train model on randomly-rotated SAR first')
     parser.add_argument('--mintrainsize',
                         help='Minimum building size (m^2) for training')
     parser.add_argument('--mintestsize',

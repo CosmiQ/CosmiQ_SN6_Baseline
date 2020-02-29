@@ -7,6 +7,8 @@ https://github.com/ternaus/TernausNet/blob/master/unet_models.py
 VGG-11:
 https://github.com/pytorch/vision/blob/master/torchvision/models/vgg.py
 https://github.com/pytorch/vision/blob/master/torchvision/models/utils.py
+
+Note: The model weight URLs given here only work if there are three bands.  However, the current default (which is used for SpaceNet 6 SAR data) is 4 bands.
 """
 
 import torch
