@@ -476,7 +476,7 @@ inference_augmentation:
       p: 1.0
   p: 1.0
 training:
-  epochs: 29999
+  epochs: 2
   steps_per_epoch:
   optimizer: AdamW #Adam or AdamW
   lr: 1e-4
@@ -511,7 +511,7 @@ training:
     model_checkpoint:
       filepath: '$MODELDIR/opticalbest.model'
       monitor: val_loss
-  model_dest_path: '$MODELDIR/optical.model'
+  model_dest_path: '$MODELDIR/opticallast.model'
   verbose: true
 """
     yamlcontents = yamlcontents.replace('$OPTICALTRAINCSV',
@@ -544,6 +544,20 @@ def train(args):
         config = sol.utils.config.parse(args.opticalyamlpath)
         trainer = sol.nets.train.Trainer(config, custom_model_dict=optical_dict, custom_losses=custom_losses)
         trainer.train()
+
+        #Select best-performing optical imagery model
+        if not args.uselastmodel:
+            modelfiles = sorted(glob.glob(os.path.join(args.modeldir,
+                                                       'opticalbest*.model')))
+            timestamps = [os.path.getmtime(modelfile)
+                          for modelfile in modelfiles]
+            latestindex = timestamps.index(max(timestamps))
+            modelfile = modelfiles[latestindex]
+        else:
+            modelfile = os.path.join(args.modeldir, 'opticallast.model')
+        print(modelfile)
+        destfile = os.path.join(args.modeldir, 'optical.model')
+        shutil.copyfile(modelfile, destfile, follow_symlinks=True)
         print('Training on Optical: End')
 
     #Load SAR configuration file
