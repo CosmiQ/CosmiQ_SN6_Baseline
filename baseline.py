@@ -336,7 +336,7 @@ inference_augmentation:
       p: 1.0
   p: 1.0
 training:
-  epochs: 100000
+  epochs: 100
   steps_per_epoch:
   optimizer: AdamW #Adam or AdamW
   lr: 1e-4
@@ -476,7 +476,7 @@ inference_augmentation:
       p: 1.0
   p: 1.0
 training:
-  epochs: 2
+  epochs: 100
   steps_per_epoch:
   optimizer: AdamW #Adam or AdamW
   lr: 1e-4
