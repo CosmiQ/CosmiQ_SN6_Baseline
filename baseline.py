@@ -19,7 +19,6 @@ import gdal
 import solaris as sol
 
 import model
-import loss
 
 def makeemptyfolder(path):
     """
@@ -226,19 +225,6 @@ def pretrain(args):
     opticalvaliddf.to_csv(args.opticalvalidcsv, index=False)
 
 
-#Small wrapper class to apply sigmoid and mask to output of a Module class.
-#Not currently used
-class Sigmoid_and_Mask(torch.nn.Module):
-    def __init__(self, WrappedClass=model.UNet11):
-        super(Sigmoid_and_Mask, self).__init__()
-        self.innermodel = WrappedClass()
-    def forward(self, x):
-        logits = self.innermodel.forward(x)
-        sigout = torch.sigmoid(logits)
-        maskout = torch.where(x.view(sigout.size()) > -4, sigout, torch.zeros(sigout.size()).cuda()) #The magic number in this line is -mean/std for image normalization
-        return maskout
-
-
 #Custom model dictionaries, defined globally
 sar_dict = {
     'model_name': 'unet11',
@@ -291,13 +277,6 @@ training_augmentation:
   augmentations:
     HorizontalFlip:
       p: 0.5
-    #RandomRotate90:
-    #  p: 1.0
-    #Rotate:
-    #  limit: 180. #22.5
-    #  border_mode: constant
-    #  cval: 0
-    #  p: 1.0
     RandomCrop:
       height: 512
       width: 512
@@ -307,7 +286,7 @@ training_augmentation:
         - 0.5
       std:
         - 0.125
-      max_pixel_value: 255.0 #255.0 or 65535.0
+      max_pixel_value: 255.0
       p: 1.0
   p: 1.0
   shuffle: true
@@ -322,7 +301,7 @@ validation_augmentation:
         - 0.5
       std:
         - 0.125
-      max_pixel_value: 255.0 #255.0 or 65535.0
+      max_pixel_value: 255.0
       p: 1.0
   p: 1.0
 inference_augmentation:
@@ -332,37 +311,23 @@ inference_augmentation:
         - 0.5
       std:
         - 0.125
-      max_pixel_value: 255.0 #255.0 or 65535.0
+      max_pixel_value: 255.0
       p: 1.0
   p: 1.0
 training:
   epochs: 50
   steps_per_epoch:
-  optimizer: AdamW #Adam or AdamW
+  optimizer: AdamW
   lr: 1e-4
   opt_args:
   loss:
-    #bcewithlogits:
-    #jaccard:
     dice:
         logits: true
     focal:
         logits: true
-    #ScaledTorchDiceLoss:
-    #    scale: false
-    #    logits: true
-    #ScaledTorchFocalLoss:
-    #    scale: false
-    #    logits: true
-    #bcewithlogits:
   loss_weights:
-    #bcewithlogits: 10
-    #jaccard: 2.5
     dice: 1.0
     focal: 10.0
-    #ScaledTorchDiceLoss: 1.0
-    #ScaledTorchFocalLoss: 10.0
-    #bcewithlogits: 1.0
   metrics:
     training:
     validation:
@@ -433,11 +398,6 @@ training_augmentation:
       p: 0.5
     RandomRotate90:
       p: 1.0
-    #Rotate:
-    #  limit: 22.5
-    #  border_mode: constant
-    #  cval: 0
-    #  p: 1.0
     RandomCrop:
       height: 512
       width: 512
@@ -447,7 +407,7 @@ training_augmentation:
         - 0.5
       std:
         - 0.125
-      max_pixel_value: 255.0 #255.0 or 65535.0
+      max_pixel_value: 255.0
       p: 1.0
   p: 1.0
   shuffle: true
@@ -462,7 +422,7 @@ validation_augmentation:
         - 0.5
       std:
         - 0.125
-      max_pixel_value: 255.0 #255.0 or 65535.0
+      max_pixel_value: 255.0
       p: 1.0
   p: 1.0
 inference_augmentation:
@@ -472,37 +432,23 @@ inference_augmentation:
         - 0.5
       std:
         - 0.125
-      max_pixel_value: 255.0 #255.0 or 65535.0
+      max_pixel_value: 255.0
       p: 1.0
   p: 1.0
 training:
   epochs: 150
   steps_per_epoch:
-  optimizer: AdamW #Adam or AdamW
+  optimizer: AdamW
   lr: 1e-4
   opt_args:
   loss:
-    #bcewithlogits:
-    #jaccard:
     dice:
         logits: true
     focal:
         logits: true
-    #ScaledTorchDiceLoss:
-    #    scale: false
-    #    logits: true
-    #ScaledTorchFocalLoss:
-    #    scale: false
-    #    logits: true
-    #bcewithlogits:
   loss_weights:
-    #bcewithlogits: 10
-    #jaccard: 2.5
     dice: 1.0
     focal: 10.0
-    #ScaledTorchDiceLoss: 1.0
-    #ScaledTorchFocalLoss: 10.0
-    #bcewithlogits: 1.0
   metrics:
     training:
     validation:
@@ -534,15 +480,12 @@ def train(args):
     defineyaml()
     defineopticalyaml()
 
-    #Define custom losses
-    custom_losses = {'ScaledTorchDiceLoss' : loss.ScaledTorchDiceLoss,
-                     'ScaledTorchFocalLoss' : loss.ScaledTorchFocalLoss}
-
     #Optionally start by training on optical imagery for transfer learning
     if args.transferoptical:
         print('Training on Optical: Start')
         config = sol.utils.config.parse(args.opticalyamlpath)
-        trainer = sol.nets.train.Trainer(config, custom_model_dict=optical_dict, custom_losses=custom_losses)
+        trainer = sol.nets.train.Trainer(config,
+                                         custom_model_dict=optical_dict)
         trainer.train()
 
         #Select best-performing optical imagery model
@@ -576,7 +519,7 @@ def train(args):
         print('Training on rotated SAR: End')
 
     #Instantiate trainer and train on SAR imagery
-    trainer = sol.nets.train.Trainer(config, custom_model_dict=sar_dict, custom_losses=custom_losses)
+    trainer = sol.nets.train.Trainer(config, custom_model_dict=sar_dict)
     trainer.train()
 
 
