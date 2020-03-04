@@ -33,7 +33,7 @@ def readrotationfile(path):
     Reads SAR_orientations file, which lists whether each strip was imaged
     from the north (denoted by 0) or from the south (denoted by 1).
     """
-    rotationdf = pd.read_csv(args.rotationfile,
+    rotationdf = pd.read_csv(path,
                              sep=' ',
                              index_col=0,
                              names=['strip', 'direction'],
@@ -128,6 +128,10 @@ def pretrain(args):
     print('Pretrain')
     assert(args.sardir is not None and args.labeldir is not None and args.maskdir is not None and args.sarprocdir is not None)
 
+    #Save local copy of rotation file
+    if args.rotate:
+        shutil.copy(args.rotationfile, args.rotationfilelocal, follow_symlinks=True)
+
     #Get paths to relevant files
     sarpaths = glob.glob(os.path.join(args.sardir, '*.tif'))
     sarpaths.sort()
@@ -153,8 +157,8 @@ def pretrain(args):
 
     #Look up how to rotate masks and images, if enabled
     if args.rotate:
-        assert(args.rotationfile is not None)
-        rotationdf = readrotationfile(args.rotationfile)
+        assert(args.rotationfilelocal is not None)
+        rotationdf = readrotationfile(args.rotationfilelocal)
 
     #Create masks, with optional rotation and optional size threshold
     #Also copy SAR and optical imagery to local folder, with optional rotation
@@ -531,8 +535,8 @@ def pretest(args):
 
     #Look up how to rotate masks and images, if enabled
     if args.rotate:
-        assert(args.rotationfile is not None)
-        rotationdf = readrotationfile(args.rotationfile)
+        assert(args.rotationfilelocal is not None)
+        rotationdf = readrotationfile(args.rotationfilelocal)
 
     #Copy SAR test images to local folder, with optional rotation
     #Also create Pandas dataframe of testing data
@@ -589,7 +593,8 @@ def test(args):
     firstfile = True
     sourcefolder = config['inference']['output_dir']
     sourcefiles = sorted(glob.glob(os.path.join(sourcefolder, '*')))
-    rotationdf = readrotationfile(args.rotationfile)
+    if args.rotate:
+        rotationdf = readrotationfile(args.rotationfilelocal)
     minbuildingsize = float(args.mintestsize) if args.mintestsize is not None else 0
     for sourcefile in tqdm.tqdm(sourcefiles, total=len(sourcefiles)):
         filename = os.path.basename(sourcefile)
@@ -704,6 +709,8 @@ if __name__ == '__main__':
     parser.add_argument('--rotationfile',
                         help='File of data acquisition directions')
     #Training: Preprocessed file paths
+    parser.add_argument('--rotationfilelocal',
+                        help='Where to save a copy of directions file')
     parser.add_argument('--maskdir',
                         help='Where to save building footprint masks')
     parser.add_argument('--sarprocdir',
