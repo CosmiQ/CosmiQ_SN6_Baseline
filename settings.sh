@@ -1,7 +1,6 @@
 #!/bin/bash
 
-#dstdir=/root
-dstdir=/home/sol/wdata/rotterdam/baseline
+dstdir=/root
 
 settings="\
 --rotationfilelocal $dstdir/SAR_orientations.txt \
