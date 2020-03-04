@@ -1,5 +1,5 @@
 FROM nvidia/cuda:9.2-devel-ubuntu16.04
-LABEL maintainer="nweir <nweir@iqt.org>"
+LABEL maintainer="dhogan <dhogan@iqt.org>"
 
 # Modified version of the Solaris Dockerfile.
 
@@ -23,11 +23,13 @@ RUN apt-get update \
     bzip2 \
     ca-certificates \
     curl \
+    emacs \
     git \
+    less \
     libgdal-dev \
     libssl-dev \
     libffi-dev \
-		libncurses-dev \
+    libncurses-dev \
     libgl1 \
     jq \
     nfs-common \
@@ -36,9 +38,11 @@ RUN apt-get update \
     python-pip \
     python-wheel \
     python-setuptools \
+    tree \
     unzip \
-		vim \
+    vim \
     wget \
+    xterm \
     build-essential \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
@@ -61,7 +65,7 @@ RUN conda update conda && \
     conda config --prepend channels conda-forge && \
     conda config --prepend channels pytorch
 
-WORKDIR /tmp/
+WORKDIR /root/
 RUN git clone https://github.com/cosmiq/solaris.git && \
     cd solaris && \
     git checkout ${solaris_branch} && \
@@ -72,9 +76,9 @@ RUN cd solaris && pip install .
 
 # INSERT COPY COMMANDS HERE TO COPY FILES TO THE WORKING DIRECTORY.
 # FOR EXAMPLE:
-COPY main.py /tmp/
-COPY *.sh /tmp/
+COPY *.py /root/
+COPY *.sh /root/
 
 # SET PERMISSIONS FOR EXECUTION OF SHELL SCRIPTS
-RUN chmod a+x /tmp/train.sh && chmod a+x /tmp/test.sh
-ENV PATH $PATH:/tmp/
+RUN chmod a+x /root/train.sh && chmod a+x /root/test.sh && chmod a+x /root/all.sh && chmod a+x /root/settings.sh
+ENV PATH $PATH:/root/
