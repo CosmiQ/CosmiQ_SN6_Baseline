@@ -503,22 +503,13 @@ def train(args):
         shutil.copyfile(modelfile, destfile, follow_symlinks=True)
         print('Training on Optical: End')
 
-    #Load SAR configuration file
+    #Instantiate trainer and train on SAR imagery
     config = sol.utils.config.parse(args.yamlpath)
     if args.transferoptical:
         config['pretrained'] = True
         sar_dict['weight_path'] = os.path.join(args.modeldir, 'optical.model')
     else:
         config['pretrained'] = False
-
-    #Optionally train on randomly-rotated SAR
-    if args.transfersar:
-        print('Training on rotated SAR: Start')
-        #config = sol.utils.config.parse(args.yamlpath)
-        #config['training_augmentation']['augmentations']
-        print('Training on rotated SAR: End')
-
-    #Instantiate trainer and train on SAR imagery
     trainer = sol.nets.train.Trainer(config, custom_model_dict=sar_dict)
     trainer.train()
 
@@ -755,8 +746,6 @@ if __name__ == '__main__':
                         help='Rotate tiles to align imaging direction')
     parser.add_argument('--transferoptical', action='store_true',
                         help='Train model on optical before training on SAR')
-    parser.add_argument('--transfersar', action='store_true',
-                        help='Train model on randomly-rotated SAR first')
     parser.add_argument('--mintrainsize',
                         help='Minimum building size (m^2) for training')
     parser.add_argument('--mintestsize',
