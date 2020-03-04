@@ -1,5 +1,7 @@
 FROM nvidia/cuda:9.2-devel-ubuntu16.04
 LABEL maintainer="dhogan <dhogan@iqt.org>"
+LABEL org.label-schema.schema-version 1.0
+LABEL org.label-schema.name SpaceNet_6_Baseline
 
 # Modified version of the Solaris Dockerfile.
 
