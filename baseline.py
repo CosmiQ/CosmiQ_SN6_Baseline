@@ -213,6 +213,11 @@ def pretrain(args):
             'label': maskpath,
             'group': groupnum}, ignore_index=True)
 
+        #Optionally end loop early (for debugging purposes)
+        if args.earlycutoff is not None:
+            if i >= args.earlycutoff - 1:
+                break
+
     #Write reference CSVs for training
     for i in range(numgroups+1):
         print( '%i: %i' % (i, len(combodf[combodf['group']==i])))
@@ -555,6 +560,11 @@ def pretest(args):
             'image': sarprocpath
         }, ignore_index=True)
 
+        #Optionally end loop early (for debugging purposes)
+        if args.earlycutoff is not None:
+            if i >= args.earlycutoff - 1:
+                break
+
     #Write reference CSVs for testing
     testdf.to_csv(args.testcsv, index=False)
 
@@ -637,7 +647,6 @@ def test(args):
         referencefile = os.path.join(args.testprocdir, filename)
         vectordata = sol.vector.mask.mask_to_poly_geojson(
             sourcedatarotated,
-            #reference_im=referencefile,
             output_path=vectorfile,
             output_type='csv',
             min_area=0,
@@ -759,6 +768,8 @@ if __name__ == '__main__':
                         help='Minimum size to output during testing')
     parser.add_argument('--uselastmodel', action='store_true',
                         help='Do not overwrite last model with best model')
+    parser.add_argument('--earlycutoff',
+                        help='Limit tiles used, for debugging purposes')
     args = parser.parse_args(sys.argv[1:])
 
     if args.pretrain:
