@@ -73,6 +73,7 @@ RUN git clone https://github.com/cosmiq/solaris.git && \
     conda env create -f environment-gpu.yml
 ENV PATH /opt/conda/envs/solaris/bin:$PATH
 
+RUN source activate solaris && pip install git+git://github.com/toblerity/shapely.git
 RUN cd solaris && pip install .
 
 # INSERT COPY COMMANDS HERE TO COPY FILES TO THE WORKING DIRECTORY.
