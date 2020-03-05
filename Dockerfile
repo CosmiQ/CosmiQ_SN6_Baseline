@@ -82,5 +82,5 @@ COPY *.py /root/
 COPY *.sh /root/
 
 # SET PERMISSIONS FOR EXECUTION OF SHELL SCRIPTS
-RUN chmod a+x /root/train.sh && chmod a+x /root/test.sh && chmod a+x /root/all.sh && chmod a+x /root/settings.sh
+RUN chmod a+x /root/train.sh && chmod a+x /root/test.sh && chmod a+x /root/settings.sh
 ENV PATH $PATH:/root/
