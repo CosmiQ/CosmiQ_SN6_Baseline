@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source activate solaris
+
 traindatapath=$1
 traindataargs="\
 --sardir $traindatapath/SAR-Intensity \
@@ -10,4 +12,4 @@ traindataargs="\
 
 source settings.sh
 
-./baseline.py --train $traindataargs $settings
+./baseline.py --pretrain --train $traindataargs $settings

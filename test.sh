@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source activate solaris
+
 testdatapath=$1
 outputpath=$2
 testdataargs="\
@@ -9,4 +11,4 @@ testdataargs="\
 
 source settings.sh
 
-./baseline.py --test --eval $testdataargs $settings
+./baseline.py --pretest --test $testdataargs $settings
