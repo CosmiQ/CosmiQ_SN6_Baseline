@@ -215,7 +215,7 @@ def pretrain(args):
 
         #Optionally end loop early (for debugging purposes)
         if args.earlycutoff is not None:
-            if i >= args.earlycutoff - 1:
+            if i >= int(args.earlycutoff) - 1:
                 break
 
     #Write reference CSVs for training
@@ -562,7 +562,7 @@ def pretest(args):
 
         #Optionally end loop early (for debugging purposes)
         if args.earlycutoff is not None:
-            if i >= args.earlycutoff - 1:
+            if i >= int(args.earlycutoff) - 1:
                 break
 
     #Write reference CSVs for testing
