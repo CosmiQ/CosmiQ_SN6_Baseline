@@ -3,12 +3,19 @@ SpaceNet 6 baseline neural network architecture
 Code adapted with minimal changes from these sources:
 
 TernausNet:
+Lines 31-196 of this file
 https://github.com/ternaus/TernausNet/blob/master/unet_models.py
+License in licenses/LICENSE_TernausNet.txt
+
 VGG-11:
+Lines 25-28 and 199-370 of this file
 https://github.com/pytorch/vision/blob/master/torchvision/models/vgg.py
 https://github.com/pytorch/vision/blob/master/torchvision/models/utils.py
+License in licenses/LICENSE_Pytorch.txt
 
-Note: The model weight URLs given here only work if there are three bands.  However, the current default (which is used for SpaceNet 6 SAR data) is 4 bands.
+Note: The model weight URLs given here only work if there are three bands.
+However, the current default (which is used for SpaceNet 6 SAR data) is 4
+bands.
 """
 
 import torch
