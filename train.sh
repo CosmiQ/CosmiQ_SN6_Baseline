@@ -6,7 +6,7 @@ traindatapath=$1
 traindataargs="\
 --sardir $traindatapath/SAR-Intensity \
 --opticaldir $traindatapath/PS-RGB \
---labeldir $traindatapath/Buildings \
+--labeldir $traindatapath/geojson_buildings \
 --rotationfile $traindatapath/SummaryData/SAR_orientations.txt \
 "
 

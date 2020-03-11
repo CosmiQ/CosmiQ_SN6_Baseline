@@ -7,7 +7,7 @@ LABEL org.label-schema.name SpaceNet_6_Baseline
 
 ENV CUDNN_VERSION 7.3.0.29
 LABEL com.nvidia.cudnn.version="${CUDNN_VERSION}"
-ARG solaris_branch='master'
+ARG solaris_branch='v0.2.0'
 
 
 # prep apt-get and cudnn
@@ -69,11 +69,19 @@ RUN conda config --prepend channels conda-forge && \
 WORKDIR /root/
 RUN git clone https://github.com/cosmiq/solaris.git && \
     cd solaris && \
-    git checkout ${solaris_branch} && \
-    conda env create -f environment-gpu.yml
+    git checkout ${solaris_branch} 
+
+COPY environment-gpu.txt /root/
+    
+RUN cd solaris && \   
+    conda create -n solaris python=3.6.7 
+
 ENV PATH /opt/conda/envs/solaris/bin:$PATH
 
+RUN source activate solaris && conda install --file environment-gpu.txt 
+
 RUN source activate solaris && pip install git+git://github.com/toblerity/shapely.git
+
 RUN cd solaris && pip install .
 
 # INSERT COPY COMMANDS HERE TO COPY FILES TO THE WORKING DIRECTORY.
