@@ -80,6 +80,7 @@ RUN cd solaris && pip install .
 # FOR EXAMPLE:
 COPY *.py /root/
 COPY *.sh /root/
+COPY weights /root/
 
 # SET PERMISSIONS FOR EXECUTION OF SHELL SCRIPTS
 RUN chmod a+x /root/train.sh && chmod a+x /root/test.sh && chmod a+x /root/settings.sh
