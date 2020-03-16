@@ -576,6 +576,10 @@ def test(args):
     """
     print('Test')
 
+    #Create SAR YAML file if absent
+    if not os.path.exists(args.yamlfile):
+        defineyaml(args)
+
     #Overwrite last model with best model
     modelfiles = sorted(glob.glob(os.path.join(args.modeldir, 'best*.model')))
     timestamps = [os.path.getmtime(modelfile) for modelfile in modelfiles]
