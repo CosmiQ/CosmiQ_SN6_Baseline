@@ -577,7 +577,7 @@ def test(args):
     print('Test')
 
     #Create SAR YAML file if absent
-    if not os.path.exists(args.yamlfile):
+    if not os.path.exists(args.yamlpath):
         defineyaml(args)
 
     #Overwrite last model with best model
