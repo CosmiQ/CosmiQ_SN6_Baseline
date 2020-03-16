@@ -63,7 +63,8 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-4.5.4-Linux-x86_
     echo "conda activate base" >> ~/.bashrc
 
 # prepend pytorch and conda-forge before default channel
-RUN conda config --prepend channels conda-forge && \
+RUN conda update -n base -c defaults conda && \
+    conda config --prepend channels conda-forge && \
     conda config --prepend channels pytorch
 
 WORKDIR /root/
