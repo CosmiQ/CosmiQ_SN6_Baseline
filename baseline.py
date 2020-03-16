@@ -250,7 +250,7 @@ optical_dict = {
 }
 
 
-def defineyaml():
+def defineyaml(args):
     #YAML
     yamlcontents = """
 model_name: unet11
@@ -369,7 +369,7 @@ inference:
 
 
 
-def defineopticalyaml():
+def defineopticalyaml(args):
     #Optical YAML
     yamlcontents = """
 model_name: unet11
@@ -486,8 +486,8 @@ def train(args):
     print('Train')
     
     #Create YAML files
-    defineyaml()
-    defineopticalyaml()
+    defineyaml(args)
+    defineopticalyaml(args)
 
     #Optionally start by training on optical imagery for transfer learning
     if args.transferoptical:
