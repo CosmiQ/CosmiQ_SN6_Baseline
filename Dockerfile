@@ -1,9 +1,5 @@
 FROM nvidia/cuda:9.2-devel-ubuntu16.04
-LABEL maintainer="dhogan <dhogan@iqt.org>"
-LABEL org.label-schema.schema-version 1.0
-LABEL org.label-schema.name SpaceNet_6_Baseline
-
-# Modified version of the Solaris Dockerfile.
+LABEL maintainer="nweir <nweir@iqt.org>"
 
 ENV CUDNN_VERSION 7.3.0.29
 LABEL com.nvidia.cudnn.version="${CUDNN_VERSION}"
@@ -25,13 +21,11 @@ RUN apt-get update \
     bzip2 \
     ca-certificates \
     curl \
-    emacs \
     git \
-    less \
     libgdal-dev \
     libssl-dev \
     libffi-dev \
-    libncurses-dev \
+		libncurses-dev \
     libgl1 \
     jq \
     nfs-common \
@@ -40,18 +34,15 @@ RUN apt-get update \
     python-pip \
     python-wheel \
     python-setuptools \
-    tree \
     unzip \
-    vim \
+		vim \
     wget \
-    xterm \
     build-essential \
   && apt-get clean \
   && rm -rf /var/lib/apt/lists/*
 
 SHELL ["/bin/bash", "-c"]
 ENV PATH /opt/conda/bin:$PATH
-
 
 # install anaconda
 RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-4.5.4-Linux-x86_64.sh -O ~/miniconda.sh && \
@@ -63,9 +54,11 @@ RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-4.5.4-Linux-x86_
     echo "conda activate base" >> ~/.bashrc
 
 # prepend pytorch and conda-forge before default channel
-RUN conda config --prepend channels conda-forge && \
+RUN conda update -n base -c defaults conda && \
+    conda config --prepend channels conda-forge && \
     conda config --prepend channels pytorch
 
+# get dev version of solaris and create conda environment based on its env file
 WORKDIR /root/
 RUN git clone https://github.com/cosmiq/solaris.git && \
     cd solaris && \
@@ -74,7 +67,9 @@ RUN git clone https://github.com/cosmiq/solaris.git && \
 ENV PATH /opt/conda/envs/solaris/bin:$PATH
 
 RUN source activate solaris && pip install git+git://github.com/toblerity/shapely.git
+
 RUN cd solaris && pip install .
+
 
 # INSERT COPY COMMANDS HERE TO COPY FILES TO THE WORKING DIRECTORY.
 # FOR EXAMPLE:
