@@ -70,8 +70,6 @@ RUN source activate solaris && pip install git+git://github.com/toblerity/shapel
 
 RUN cd solaris && pip install .
 
-# install various conda dependencies into the space_base environment
-RUN conda install -n solaris
 
 # INSERT COPY COMMANDS HERE TO COPY FILES TO THE WORKING DIRECTORY.
 # FOR EXAMPLE:
